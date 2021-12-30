@@ -149,7 +149,7 @@ fn main() {
     for _ in 0..100000 {
         let (pdf, [x, y]) = sampler.sample(rng.gen(), rng.gen());
         let mpdf = sampler.pdf(x, y);
-        if (pdf - mpdf).abs() > 0.0001 {
+        if (pdf - mpdf).abs() > 0.01 {
             panic!("Something wrong: got {} as pdf, but reconstructed {}", pdf, mpdf);
         }
         for i in -1..1 {
