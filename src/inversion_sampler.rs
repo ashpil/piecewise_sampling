@@ -116,10 +116,10 @@ impl Sampler for InversionSampler {
     }
 
     fn pdf(&self, [u, v]: [f32; 2]) -> f32 {
-        let iu = ((u * self.width as f32) as usize).clamp(0, self.width - 1);
-        let iv = ((v * self.height as f32) as usize).clamp(0, self.height - 1);
+        let x = (u * self.width as f32) as usize;
+        let y = (v * self.height as f32) as usize;
 
-        self.conditional_pdfs_integrals[iv][iu] / self.marginal_pdf_integral[self.height]
+        self.conditional_pdfs_integrals[y][x] / self.marginal_pdf_integral[self.height]
     }
 }
 

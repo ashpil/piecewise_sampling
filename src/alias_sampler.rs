@@ -4,7 +4,10 @@ pub struct AliasSampler {
     pub width: usize,
     pub height: usize,
 
-    table: Vec<(f32, usize, usize)>,
+    tau_table: Vec<f32>,
+    pdf_table: Vec<f32>,
+    i_table: Vec<u32>,
+    j_table: Vec<u32>,
 }
 
 // calculates luminance from pixel and height in [0..1]
@@ -56,20 +59,25 @@ impl AliasSampler {
             *pixel /= sum;
         }
 
+        let pdf_table = samples.iter().map(|(s, _)| *s).collect();
+
         let avg = 1.0 / (width * height) as f32;
 
-        let sort_fn = |(a, _): &(f32, _), (b, _): &(f32, _)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal).reverse();
-        samples.sort_unstable_by(sort_fn);
+        samples.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal).reverse());
 
-        let mut table = Vec::with_capacity(width * height);
+        let mut tau_table = Vec::with_capacity(width * height);
+        let mut i_table = Vec::with_capacity(width * height);
+        let mut j_table = Vec::with_capacity(width * height);
 
         // all the math here is in f32s as what we're doing is
         // terrible for floating point precision
         while let Some((w_i, i)) = samples.pop() {
             let len = samples.len();
             if let Some((w_j, j)) = samples.get_mut(0) {
-                let t = w_i / avg;
-                table.push((t, i, *j));
+                let tau = w_i / avg;
+                tau_table.push(tau);
+                i_table.push(i as u32);
+                j_table.push(*j as u32);
                 *w_j -= avg - w_i;
                 if (avg - w_i) < 0.0 {
                     eprintln!("alias: Too many floating point errors at {} to end. Average {}, last {}", len, avg, w_i);
@@ -79,8 +87,10 @@ impl AliasSampler {
             }
             sort_first(&mut samples);
         }
-        while let Some((_, j)) = samples.get(0).cloned() {
-            table.push((1.0, j, 0));
+        while let Some((_, i)) = samples.get(0).cloned() {
+            tau_table.push(1.0);
+            i_table.push(i as u32);
+            j_table.push(0);
             samples.pop();
         }
 
@@ -88,7 +98,10 @@ impl AliasSampler {
             width,
             height,
 
-            table,
+            tau_table,
+            pdf_table,
+            i_table,
+            j_table,
         }
     }
 }
@@ -96,21 +109,24 @@ impl AliasSampler {
 
 impl Sampler for AliasSampler {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
-        let table_index = (self.table.len() as f32 * u) as usize;
-        let (t, i, j) = self.table[table_index];
+        let table_index = (self.tau_table.len() as f32 * u) as usize;
+        let tau = self.tau_table[table_index];
 
-        let index = if v < t { i } else { j };
+        let index = if v < tau { self.i_table[table_index] } else { self.j_table[table_index] };
+        let pdf = self.pdf_table[index as usize];
 
-        let pdf = 0.0;
+        let y = index / self.width as u32;
+        let x = index - (y * self.width as u32);
 
-        let j = index / self.width;
-        let i = index - (j * self.width);
 
-        (pdf, [(i as f32) / (self.width as f32), (j as f32) / (self.height as f32)])
+        (pdf, [(x as f32) / (self.width as f32), (y as f32) / (self.height as f32)])
     }
 
-    fn pdf(&self, _: [f32; 2]) -> f32 {
-        0.0 // TODO
+    fn pdf(&self, [u, v]: [f32; 2]) -> f32 {
+        let x = (u * self.width as f32) as usize;
+        let y = (v * self.height as f32) as usize;
+
+        self.pdf_table[(y * self.width) + x]
     }
 }
 
