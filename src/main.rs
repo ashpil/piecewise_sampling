@@ -83,9 +83,9 @@ fn main() {
         (p[0], p[1], p[2])
     }).unwrap();
 
-    fn write_bytes_to_file(name: &str, data: Vec<Vec<f32>>) {
+    fn write_f32_to_file(name: &str, data: Vec<Vec<f32>>) {
         let mut buffer = std::fs::File::create(format!("output/{}.raw", name.replace(" ", "_"))).unwrap();
-        println!("Writing {} {}x{}", name, data[0].len(), data.len());
+        println!("Writing f32s {} {}x{}", name, data[0].len(), data.len());
         for row in data {
             for pixel in row {
                 buffer.write_f32::<LittleEndian>(pixel).unwrap();
@@ -93,10 +93,23 @@ fn main() {
         }
     }
 
-    write_bytes_to_file("conditional pdfs integrals", sampler.conditional_pdfs_integrals);
-    write_bytes_to_file("conditional cdfs", sampler.conditional_cdfs);
-    write_bytes_to_file("marginal pdf integral", vec![sampler.marginal_pdf_integral]);
-    write_bytes_to_file("marginal cdf", vec![sampler.marginal_cdf]);
+    fn write_u32_to_file(name: &str, data: Vec<u32>) {
+        let mut buffer = std::fs::File::create(format!("output/{}.raw", name.replace(" ", "_"))).unwrap();
+        println!("Writing u32s {} {}", name, data.len());
+        for pixel in data {
+            buffer.write_u32::<LittleEndian>(pixel).unwrap();
+        }
+    }
+
+    write_f32_to_file("conditional pdfs integrals", sampler.conditional_pdfs_integrals);
+    write_f32_to_file("conditional cdfs", sampler.conditional_cdfs);
+    write_f32_to_file("marginal pdf integral", vec![sampler.marginal_pdf_integral]);
+    write_f32_to_file("marginal cdf", vec![sampler.marginal_cdf]);
+
+    write_f32_to_file("tau table", vec![sampler2.tau_table]);
+    write_f32_to_file("pdf table", vec![sampler2.pdf_table]);
+    write_u32_to_file("i table", sampler2.i_table);
+    write_u32_to_file("j table", sampler2.j_table);
 
     println!("Done!");
 }

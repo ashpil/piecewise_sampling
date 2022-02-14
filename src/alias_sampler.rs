@@ -4,10 +4,10 @@ pub struct AliasSampler {
     pub width: usize,
     pub height: usize,
 
-    tau_table: Vec<f32>,
-    pdf_table: Vec<f32>,
-    i_table: Vec<u32>,
-    j_table: Vec<u32>,
+    pub tau_table: Vec<f32>,
+    pub pdf_table: Vec<f32>,
+    pub i_table: Vec<u32>,
+    pub j_table: Vec<u32>,
 }
 
 // calculates luminance from pixel and height in [0..1]
