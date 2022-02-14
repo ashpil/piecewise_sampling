@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 exr = "1.4"
 byteorder = "1.4"
-rand = "0.8"
+sobol = "1.0"
 

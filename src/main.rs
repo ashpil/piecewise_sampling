@@ -1,7 +1,9 @@
 use exr::prelude::*;
 use byteorder::{WriteBytesExt, LittleEndian};
-use rand::{rngs::StdRng, SeedableRng, Rng};
 use std::time::Instant;
+
+use sobol::Sobol;
+use sobol::params::JoeKuoD6;
 
 mod inversion_sampler;
 use inversion_sampler::InversionSampler;
@@ -17,12 +19,12 @@ pub trait Sampler {
     fn pdf(&self, uv: [f32; 2]) -> f32;
 
     // fills demo image with sample_count samples
-    fn fill_demo_image(&self, demo: &mut Vec<Vec<[f32; 3]>>, rng: &mut impl Rng, sample_count: usize) {
+    fn fill_demo_image(&self, demo: &mut Vec<Vec<[f32; 3]>>, rngs: impl Iterator<Item = [f32; 2]>) {
         let width = demo[0].len();
         let height = demo.len();
 
-        for _ in 0..sample_count {
-            let (pdf, [x, y]) = self.sample([rng.gen(), rng.gen()]);
+        for rng in rngs {
+            let (pdf, [x, y]) = self.sample(rng);
             let mpdf = self.pdf([x, y]);
             if (pdf - mpdf).abs() > 0.01 {
                 panic!("Something wrong: got {} as pdf, but reconstructed {} at {}x{}", pdf, mpdf, x, y);
@@ -56,17 +58,21 @@ fn main() {
     }).unwrap().layer_data.channel_data.pixels;
     let mut rgb_image2 = rgb_image.clone();
 
-    let sampler = InversionSampler::new(&rgb_image, 4);
+    let sampler = InversionSampler::new(&rgb_image, 1);
     let sampler2 = AliasSampler::new(&rgb_image2);
 
-    let mut rng = StdRng::seed_from_u64(0);
+    let count = 10000;
+    let params = JoeKuoD6::minimal();
+    let seq = Sobol::<f32>::new(2, &params);
+
+    let rngs: Vec<[f32; 2]> = seq.take(count).map(|v| [v[0], v[1]]).collect();
 
     let now1 = Instant::now();
-    sampler.fill_demo_image(&mut rgb_image, &mut rng, 100000);
+    sampler.fill_demo_image(&mut rgb_image, rngs.clone().into_iter());
     println!("Took {} for inversion method", now1.elapsed().as_secs_f32());
 
     let now2 = Instant::now();
-    sampler2.fill_demo_image(&mut rgb_image2, &mut rng, 100000);
+    sampler2.fill_demo_image(&mut rgb_image2, rngs.into_iter());
     println!("Took {} for alias method", now2.elapsed().as_secs_f32());
 
 
