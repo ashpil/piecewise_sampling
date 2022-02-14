@@ -1,16 +1,13 @@
 use exr::prelude::*;
 use byteorder::{WriteBytesExt, LittleEndian};
 use rand::{rngs::StdRng, SeedableRng, Rng};
+use std::time::Instant;
 
 mod inversion_sampler;
 use inversion_sampler::InversionSampler;
 
-// calculates luminance from pixel and height in [0..1]
-pub fn luminance([r, g, b]: [f32; 3], height: f32) -> f32 {
-    let luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
-    let sin_theta = (std::f32::consts::PI * height).sin();
-    luminance * sin_theta
-}
+mod alias_sampler;
+use alias_sampler::AliasSampler;
 
 pub trait Sampler {
     // takes in rand uv, returns (pdf, uv coords)
@@ -28,7 +25,7 @@ pub trait Sampler {
             let (pdf, [x, y]) = self.sample([rng.gen(), rng.gen()]);
             let mpdf = self.pdf([x, y]);
             if (pdf - mpdf).abs() > 0.01 {
-                panic!("Something wrong: got {} as pdf, but reconstructed {}", pdf, mpdf);
+                panic!("Something wrong: got {} as pdf, but reconstructed {} at {}x{}", pdf, mpdf, x, y);
             }
             for is in -1..1 {
                 for js in -1..1 {
@@ -50,18 +47,39 @@ fn main() {
         std::process::exit(1);
     }
 
-    let sampler = InversionSampler::new(args[1].clone());
+    let mut rgb_image = read_first_rgba_layer_from_file(args[1].clone(), |resolution, _| {
+        let width = resolution.width();
+        let height = resolution.height();
+        vec![vec![[0.0, 0.0, 0.0]; width]; height]
+    }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
+        buffer[pos.y()][pos.x()] = [r, g, b];
+    }).unwrap().layer_data.channel_data.pixels;
+    let mut rgb_image2 = rgb_image.clone();
+
+    let sampler = InversionSampler::new(&rgb_image);
+    let sampler2 = AliasSampler::new(&rgb_image2);
 
     let mut rng = StdRng::seed_from_u64(0);
-    let mut demo = sampler.rgb_image.clone();
 
-    sampler.fill_demo_image(&mut demo, &mut rng, 100000);
+    let now1 = Instant::now();
+    sampler.fill_demo_image(&mut rgb_image, &mut rng, 100000);
+    println!("Took {} for inversion method", now1.elapsed().as_secs_f32());
+
+    let now2 = Instant::now();
+    sampler2.fill_demo_image(&mut rgb_image2, &mut rng, 100000);
+    println!("Took {} for alias method", now2.elapsed().as_secs_f32());
+
 
     // if error, likely output dir already created, so we ignore that
     let _ = std::fs::create_dir("output");
 
-    write_rgb_file("output/demo.exr", sampler.rgb_image[0].len(), sampler.rgb_image.len(), |x, y| {
-        let p = demo[y][x];
+    write_rgb_file("output/demo.exr", rgb_image[0].len(), rgb_image.len(), |x, y| {
+        let p = rgb_image[y][x];
+        (p[0], p[1], p[2])
+    }).unwrap();
+
+    write_rgb_file("output/demo2.exr", rgb_image[0].len(), rgb_image.len(), |x, y| {
+        let p = rgb_image2[y][x];
         (p[0], p[1], p[2])
     }).unwrap();
 

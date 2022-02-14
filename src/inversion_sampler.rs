@@ -1,11 +1,8 @@
-use exr::prelude::*;
-use crate::{luminance, Sampler};
+use crate::Sampler;
 
 pub struct InversionSampler {
     pub width: usize,
     pub height: usize,
-
-    pub rgb_image: Vec<Vec<[f32; 3]>>,
 
     pub conditional_pdfs_integrals: Vec<Vec<f32>>,
     pub conditional_cdfs: Vec<Vec<f32>>,
@@ -14,16 +11,15 @@ pub struct InversionSampler {
     pub marginal_cdf: Vec<f32>,
 }
 
-impl InversionSampler {
-    pub fn new(filepath: impl AsRef<std::path::Path>) -> Self {
-        let rgb_image = read_first_rgba_layer_from_file(filepath, |resolution, _| {
-            let width = resolution.width();
-            let height = resolution.height();
-            vec![vec![[0.0, 0.0, 0.0]; width]; height]
-        }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
-            buffer[pos.y()][pos.x()] = [r, g, b];
-        }).unwrap().layer_data.channel_data.pixels;
+// calculates luminance from pixel and height in [0..1]
+fn luminance([r, g, b]: [f32; 3], height: f32) -> f32 {
+    let luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    let sin_theta = (std::f32::consts::PI * height).sin();
+    luminance * sin_theta
+}
 
+impl InversionSampler {
+    pub fn new(rgb_image: &Vec<Vec<[f32; 3]>>) -> Self {
         let big_height = rgb_image.len();
         let big_width = rgb_image[0].len();
 
@@ -77,8 +73,6 @@ impl InversionSampler {
         InversionSampler {
             width,
             height,
-
-            rgb_image,
 
             conditional_pdfs_integrals,
             conditional_cdfs,
