@@ -56,7 +56,7 @@ fn main() {
     }).unwrap().layer_data.channel_data.pixels;
     let mut rgb_image2 = rgb_image.clone();
 
-    let sampler = InversionSampler::new(&rgb_image);
+    let sampler = InversionSampler::new(&rgb_image, 4);
     let sampler2 = AliasSampler::new(&rgb_image2);
 
     let mut rng = StdRng::seed_from_u64(0);

@@ -19,11 +19,9 @@ fn luminance([r, g, b]: [f32; 3], height: f32) -> f32 {
 }
 
 impl InversionSampler {
-    pub fn new(rgb_image: &Vec<Vec<[f32; 3]>>) -> Self {
+    pub fn new(rgb_image: &Vec<Vec<[f32; 3]>>, factor: usize) -> Self {
         let big_height = rgb_image.len();
         let big_width = rgb_image[0].len();
-
-        let factor = 4;
 
         let width = big_width / factor;
         let height = big_height / factor;

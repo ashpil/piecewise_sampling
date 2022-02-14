@@ -8,14 +8,14 @@ pub struct AliasSampler {
 }
 
 // calculates luminance from pixel and height in [0..1]
-fn luminance([r, g, b]: [f32; 3], height: f64) -> f64 {
-    let luminance = (r as f64) * 0.2126 + (g as f64) * 0.7152 + (b as f64) * 0.0722;
-    let sin_theta = (std::f64::consts::PI * height).sin();
+fn luminance([r, g, b]: [f32; 3], height: f32) -> f32 {
+    let luminance = (r as f32) * 0.2126 + (g as f32) * 0.7152 + (b as f32) * 0.0722;
+    let sin_theta = (std::f32::consts::PI * height).sin();
     luminance * sin_theta
 }
 
 // sort when we know only first element is unsorted
-fn sort_first(vec: &mut Vec<(f64, usize)>) {
+fn sort_first(vec: &mut Vec<(f32, usize)>) {
     // only sort of non-empty
     if let Some((el, v0)) = vec.get(0).cloned() {
         let mut next_index = 1;
@@ -42,7 +42,7 @@ impl AliasSampler {
         let mut c = 0.0; // compensation for Kahan sum
         for (row_index, row) in rgb_image.iter().enumerate() {
             for (col_index, pixel) in row.iter().enumerate() {
-                let grayscale_pixel = luminance(*pixel, (row_index as f64 + 0.5) / (height as f64));
+                let grayscale_pixel = luminance(*pixel, (row_index as f32 + 0.5) / (height as f32));
                 let index = (row_index * width) + col_index;
                 samples.push((grayscale_pixel, index));
 
@@ -52,30 +52,37 @@ impl AliasSampler {
                 sum = t;
             }
         }
-        let avg = sum / (width * height) as f64;
+        for (pixel, _) in &mut samples {
+            *pixel /= sum;
+        }
 
-        let sort_fn = |(a, _): &(f64, _), (b, _): &(f64, _)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal).reverse();
+        let avg = 1.0 / (width * height) as f32;
+
+        let sort_fn = |(a, _): &(f32, _), (b, _): &(f32, _)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal).reverse();
         samples.sort_unstable_by(sort_fn);
 
-        let mut f64_table = Vec::with_capacity(width * height);
+        let mut table = Vec::with_capacity(width * height);
 
-        // all the math here is in f64s as what we're doing is
+        // all the math here is in f32s as what we're doing is
         // terrible for floating point precision
         while let Some((w_i, i)) = samples.pop() {
             let len = samples.len();
             if let Some((w_j, j)) = samples.get_mut(0) {
                 let t = w_i / avg;
-                f64_table.push((t, i, *j));
+                table.push((t, i, *j));
                 *w_j -= avg - w_i;
                 if (avg - w_i) < 0.0 {
-                    eprintln!("Failed on {} until end. Average {}, last {}", len, avg, w_i);
-                    panic!("{}, {}", i, j);
+                    eprintln!("alias: Too many floating point errors at {} to end. Average {}, last {}", len, avg, w_i);
+                    eprintln!("alias: Continuing with 1s - should be fine if {} isn't massive.", len);
+                    break;
                 }
             }
             sort_first(&mut samples);
         }
-
-        let table = f64_table.into_iter().map(|(s, i1, i2)| (s as f32, i1, i2)).collect();
+        while let Some((_, j)) = samples.get(0).cloned() {
+            table.push((1.0, j, 0));
+            samples.pop();
+        }
 
         AliasSampler {
             width,
