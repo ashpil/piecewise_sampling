@@ -12,7 +12,7 @@ use inversion_sampler::InversionSampler;
 mod alias_sampler;
 use alias_sampler::AliasSampler;
 
-pub trait Sampler {
+pub trait Distribution2D {
     // takes in rand uv, returns (pdf, uv coords)
     fn sample(&self, uv: [f32; 2]) -> (f32, [f32; 2]);
 
@@ -61,10 +61,14 @@ fn main() {
         buffer[pos.y()][pos.x()] = [r, g, b];
     }).unwrap().layer_data.channel_data.pixels;
 
-    let luminance_image = source_image.iter().map(|r| r.iter().map(|c| luminance(*c)).collect()).collect();
+    // assuming environment map
+    let density_image = source_image.iter().enumerate().map(|(row_idx, row)| {
+        let sin_theta = (std::f32::consts::PI * (row_idx as f32 + 0.5) / (source_image.len() as f32)).sin();
+        row.iter().map(|c| luminance(*c) * sin_theta).collect()
+    }).collect();
 
-    let sample_count = 10_000;
-    let stratify = false;
+    let sample_count = 100_000;
+    let stratify = true;
     let rands: Vec<[f32; 2]> = if stratify {
         let mut rands = Vec::with_capacity(sample_count);
         for i in 0..sample_count {
@@ -77,7 +81,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = InversionSampler::new(&luminance_image, 1);
+        let sampler = InversionSampler::new(&density_image, 1);
         println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -93,7 +97,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = AliasSampler::new(&luminance_image);
+        let sampler = AliasSampler::new(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();

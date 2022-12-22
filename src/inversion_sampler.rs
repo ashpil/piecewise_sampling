@@ -1,4 +1,4 @@
-use crate::Sampler;
+use crate::Distribution2D;
 
 pub struct InversionSampler {
     pub width: usize,
@@ -30,8 +30,7 @@ impl InversionSampler {
             for (col_index, pixel) in row[0..width].iter_mut().enumerate() {
                 for i in (row_index * factor)..((row_index + 1) * factor) {
                     for j in (col_index * factor)..((col_index + 1) * factor) {
-                        let new_pixel = image[i][j] * (std::f32::consts::PI * (i as f32 + 0.5) / (big_height as f32)).sin();
-                        *pixel = (*pixel).max(new_pixel);
+                        *pixel = (*pixel).max(image[i][j]);
                     }
                 }
             }
@@ -74,7 +73,7 @@ impl InversionSampler {
     }
 }
 
-impl Sampler for InversionSampler {
+impl Distribution2D for InversionSampler {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
         // perform binary search
         fn find_interval(a: &[f32], val: f32) -> usize {

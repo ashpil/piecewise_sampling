@@ -1,4 +1,4 @@
-use crate::Sampler;
+use crate::Distribution2D;
 
 #[derive(Clone, Copy)]
 pub struct Entry {
@@ -28,19 +28,16 @@ impl AliasSampler {
         let mut small = Vec::new();
         let mut large = Vec::new();
 
-        let weight_sum: f32 = image.iter().enumerate().map(|(i, row)| row.iter().sum::<f32>() * (std::f32::consts::PI * (i as f32 + 0.5) / (height as f32)).sin()).sum();
+        let weight_sum: f32 = image.iter().flatten().sum();
 
-        for (row_idx, row) in image.iter().enumerate() {
-            for (col_idx, weight) in row.iter().enumerate() {
-                let adjusted_weight = ((weight * n as f32) / weight_sum) * (std::f32::consts::PI * (row_idx as f32 + 0.5) / (height as f32)).sin();
-                let i = row_idx * width + col_idx;
-                entries[i].pdf = adjusted_weight;
-                running_weights[i] = adjusted_weight;
-                if adjusted_weight < 1.0 {
-                    small.push(i as u32);
-                } else {
-                    large.push(i as u32);
-                }
+        for (i, weight) in image.iter().flatten().enumerate() {
+            let adjusted_weight = (weight * n as f32) / weight_sum;
+            entries[i].pdf = adjusted_weight;
+            running_weights[i] = adjusted_weight;
+            if adjusted_weight < 1.0 {
+                small.push(i as u32);
+            } else {
+                large.push(i as u32);
             }
         }
         
@@ -77,7 +74,7 @@ impl AliasSampler {
 }
 
 
-impl Sampler for AliasSampler {
+impl Distribution2D for AliasSampler {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
         let n = self.width * self.height;
         let mut index = (n as f32 * u) as u32;
