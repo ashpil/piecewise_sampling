@@ -3,9 +3,6 @@
 use exr::prelude::*;
 use std::time::Instant;
 
-use sobol::Sobol;
-use sobol::params::JoeKuoD6;
-
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -69,7 +66,11 @@ fn main() {
     let sample_count = 10_000;
     let stratify = false;
     let rands: Vec<[f32; 2]> = if stratify {
-         Sobol::<f32>::new(2, &JoeKuoD6::minimal()).take(sample_count).map(|v| [v[0], v[1]]).collect()
+        let mut rands = Vec::with_capacity(sample_count);
+        for i in 0..sample_count {
+            rands.push([sobol_burley::sample(i as u32, 0, 0), sobol_burley::sample(i as u32, 1, 0)]);
+        }
+        rands
     } else {
         StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(sample_count * 2).array_chunks::<2>().collect()
     };

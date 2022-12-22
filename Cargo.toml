@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 exr = "1.5"
-sobol = "1.0"
+sobol_burley = "0.4"
 rand = "0.8"
 
