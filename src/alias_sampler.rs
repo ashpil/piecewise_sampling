@@ -82,13 +82,13 @@ impl Sampler for AliasSampler {
         let n = self.width * self.height;
         let mut index = (n as f32 * u) as u32;
         let mut entry = self.entries[index as usize];
-        if entry.select < v {
+        if entry.select <= v {
             index = entry.alias;
             entry = self.entries[entry.alias as usize];
         }
 
         let y = index / self.width as u32;
-        let x = index - (y * self.width as u32);
+        let x = index % self.width as u32;
 
         let pdf = entry.pdf;
         (pdf, [(x as f32) / (self.width as f32), (y as f32) / (self.height as f32)])

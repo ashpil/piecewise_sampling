@@ -1,8 +1,13 @@
+#![feature(iter_array_chunks)]
+
 use exr::prelude::*;
 use std::time::Instant;
 
 use sobol::Sobol;
 use sobol::params::JoeKuoD6;
+
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 mod inversion_sampler;
 use inversion_sampler::InversionSampler;
@@ -48,7 +53,6 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: pdf_maker filename.exr.");
-        eprintln!("Result in output/ directory.");
         std::process::exit(1);
     }
 
@@ -62,7 +66,13 @@ fn main() {
 
     let luminance_image = source_image.iter().map(|r| r.iter().map(|c| luminance(*c)).collect()).collect();
 
-    let rngs: Vec<[f32; 2]> = Sobol::<f32>::new(2, &JoeKuoD6::minimal()).take(100).map(|v| [v[0], v[1]]).collect();
+    let sample_count = 10_000;
+    let stratify = false;
+    let rands: Vec<[f32; 2]> = if stratify {
+         Sobol::<f32>::new(2, &JoeKuoD6::minimal()).take(sample_count).map(|v| [v[0], v[1]]).collect()
+    } else {
+        StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(sample_count * 2).array_chunks::<2>().collect()
+    };
 
     {
         let preprocess_start = Instant::now();
@@ -71,7 +81,7 @@ fn main() {
 
         let mut demo_image = source_image.clone();
         let sampling_start = Instant::now();
-        sampler.fill_demo_image(&mut demo_image, rngs.clone().into_iter());
+        sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for inversion method sampling", sampling_start.elapsed().as_secs_f32());
 
         write_rgb_file("inversion_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
@@ -87,7 +97,7 @@ fn main() {
 
         let mut demo_image = source_image.clone();
         let start = Instant::now();
-        sampler.fill_demo_image(&mut demo_image, rngs.clone().into_iter());
+        sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for alias method sampling", start.elapsed().as_secs_f32());
 
         write_rgb_file("alias_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
