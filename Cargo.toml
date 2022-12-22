@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-exr = "1.4"
+exr = "1.5"
 byteorder = "1.4"
 sobol = "1.0"
 

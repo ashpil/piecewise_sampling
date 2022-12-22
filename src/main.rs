@@ -1,5 +1,4 @@
 use exr::prelude::*;
-use byteorder::{WriteBytesExt, LittleEndian};
 use std::time::Instant;
 
 use sobol::Sobol;
@@ -40,6 +39,10 @@ pub trait Sampler {
     }
 }
 
+// calculates luminance from pixel and height in [0..1]
+fn luminance([r, g, b]: [f32; 3]) -> f32 {
+    return r * 0.2126 + g * 0.7152 + b * 0.0722;
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -49,73 +52,49 @@ fn main() {
         std::process::exit(1);
     }
 
-    let mut rgb_image = read_first_rgba_layer_from_file(args[1].clone(), |resolution, _| {
+    let source_image = read_first_rgba_layer_from_file(args[1].clone(), |resolution, _| {
         let width = resolution.width();
         let height = resolution.height();
         vec![vec![[0.0, 0.0, 0.0]; width]; height]
     }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
         buffer[pos.y()][pos.x()] = [r, g, b];
     }).unwrap().layer_data.channel_data.pixels;
-    let mut rgb_image2 = rgb_image.clone();
 
-    let sampler = InversionSampler::new(&rgb_image, 1);
-    let sampler2 = AliasSampler::new(&rgb_image2);
+    let luminance_image = source_image.iter().map(|r| r.iter().map(|c| luminance(*c)).collect()).collect();
 
-    let count = 10000;
-    let params = JoeKuoD6::minimal();
-    let seq = Sobol::<f32>::new(2, &params);
+    let rngs: Vec<[f32; 2]> = Sobol::<f32>::new(2, &JoeKuoD6::minimal()).take(100).map(|v| [v[0], v[1]]).collect();
 
-    let rngs: Vec<[f32; 2]> = seq.take(count).map(|v| [v[0], v[1]]).collect();
+    {
+        let preprocess_start = Instant::now();
+        let sampler = InversionSampler::new(&luminance_image, 1);
+        println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
-    let now1 = Instant::now();
-    sampler.fill_demo_image(&mut rgb_image, rngs.clone().into_iter());
-    println!("Took {} for inversion method", now1.elapsed().as_secs_f32());
+        let mut demo_image = source_image.clone();
+        let sampling_start = Instant::now();
+        sampler.fill_demo_image(&mut demo_image, rngs.clone().into_iter());
+        println!("Took {} seconds for inversion method sampling", sampling_start.elapsed().as_secs_f32());
 
-    let now2 = Instant::now();
-    sampler2.fill_demo_image(&mut rgb_image2, rngs.into_iter());
-    println!("Took {} for alias method", now2.elapsed().as_secs_f32());
-
-
-    // if error, likely output dir already created, so we ignore that
-    let _ = std::fs::create_dir("output");
-
-    write_rgb_file("output/demo.exr", rgb_image[0].len(), rgb_image.len(), |x, y| {
-        let p = rgb_image[y][x];
-        (p[0], p[1], p[2])
-    }).unwrap();
-
-    write_rgb_file("output/demo2.exr", rgb_image[0].len(), rgb_image.len(), |x, y| {
-        let p = rgb_image2[y][x];
-        (p[0], p[1], p[2])
-    }).unwrap();
-
-    fn write_f32_to_file(name: &str, data: Vec<Vec<f32>>) {
-        let mut buffer = std::fs::File::create(format!("output/{}.raw", name.replace(" ", "_"))).unwrap();
-        println!("Writing f32s {} {}x{}", name, data[0].len(), data.len());
-        for row in data {
-            for pixel in row {
-                buffer.write_f32::<LittleEndian>(pixel).unwrap();
-            }
-        }
+        write_rgb_file("inversion_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
+            let p = demo_image[y][x];
+            (p[0], p[1], p[2])
+        }).unwrap();
     }
 
-    fn write_u32_to_file(name: &str, data: Vec<u32>) {
-        let mut buffer = std::fs::File::create(format!("output/{}.raw", name.replace(" ", "_"))).unwrap();
-        println!("Writing u32s {} {}", name, data.len());
-        for pixel in data {
-            buffer.write_u32::<LittleEndian>(pixel).unwrap();
-        }
+    {
+        let preprocess_start = Instant::now();
+        let sampler = AliasSampler::new(&luminance_image);
+        println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
+
+        let mut demo_image = source_image.clone();
+        let start = Instant::now();
+        sampler.fill_demo_image(&mut demo_image, rngs.clone().into_iter());
+        println!("Took {} seconds for alias method sampling", start.elapsed().as_secs_f32());
+
+        write_rgb_file("alias_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
+            let p = demo_image[y][x];
+            (p[0], p[1], p[2])
+        }).unwrap();
     }
-
-    write_f32_to_file("conditional pdfs integrals", sampler.conditional_pdfs_integrals);
-    write_f32_to_file("conditional cdfs", sampler.conditional_cdfs);
-    write_f32_to_file("marginal pdf integral", vec![sampler.marginal_pdf_integral]);
-    write_f32_to_file("marginal cdf", vec![sampler.marginal_cdf]);
-
-    write_f32_to_file("tau table", vec![sampler2.tau_table]);
-    write_f32_to_file("pdf table", vec![sampler2.pdf_table]);
-    write_u32_to_file("i table", sampler2.i_table);
-    write_u32_to_file("j table", sampler2.j_table);
 
     println!("Done!");
 }

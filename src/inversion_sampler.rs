@@ -11,17 +11,10 @@ pub struct InversionSampler {
     pub marginal_cdf: Vec<f32>,
 }
 
-// calculates luminance from pixel and height in [0..1]
-fn luminance([r, g, b]: [f32; 3], height: f32) -> f32 {
-    let luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
-    let sin_theta = (std::f32::consts::PI * height).sin();
-    luminance * sin_theta
-}
-
 impl InversionSampler {
-    pub fn new(rgb_image: &Vec<Vec<[f32; 3]>>, factor: usize) -> Self {
-        let big_height = rgb_image.len();
-        let big_width = rgb_image[0].len();
+    pub fn new(image: &Vec<Vec<f32>>, factor: usize) -> Self {
+        let big_height = image.len();
+        let big_width = image[0].len();
 
         let width = big_width / factor;
         let height = big_height / factor;
@@ -37,7 +30,7 @@ impl InversionSampler {
             for (col_index, pixel) in row[0..width].iter_mut().enumerate() {
                 for i in (row_index * factor)..((row_index + 1) * factor) {
                     for j in (col_index * factor)..((col_index + 1) * factor) {
-                        let new_pixel = luminance(rgb_image[i][j], (i as f32 + 0.5) / (big_height as f32));
+                        let new_pixel = image[i][j] * (std::f32::consts::PI * (i as f32 + 0.5) / (big_height as f32)).sin();
                         *pixel = (*pixel).max(new_pixel);
                     }
                 }
