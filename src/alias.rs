@@ -9,6 +9,7 @@ pub struct Entry {
 }
 
 pub struct Alias1D {
+    pub weight_sum: f32,
     pub entries: Vec<Entry>,
 }
 
@@ -66,6 +67,7 @@ impl Alias1D {
         }
 
         Self {
+            weight_sum,
             entries,
         }
     }
@@ -92,10 +94,8 @@ impl Distribution1D for Alias1D {
 }
 
 pub struct Alias2D {
-    pub width: usize,
-    pub height: usize,
-
-    pub one: Alias1D,
+    pub marginal: Alias1D,
+    pub conditional: Vec<Alias1D>,
 }
 
 impl Alias2D {
@@ -103,13 +103,19 @@ impl Alias2D {
         let height = image.len();
         let width = image[0].len();
 
-        let one = Alias1D::new(&image.iter().flatten().cloned().collect());
+        let mut conditional = Vec::with_capacity(image.len());
+        let mut marginal_weights = Vec::with_capacity(image.len());
+        for row in image {
+            let table = Alias1D::new(row);
+            marginal_weights.push(table.weight_sum);
+            conditional.push(table);
+        }
+
+        let marginal = Alias1D::new(&marginal_weights);
 
         Self {
-            width,
-            height,
-
-            one,
+            marginal,
+            conditional,
         }
     }
 }
@@ -117,24 +123,21 @@ impl Alias2D {
 
 impl Distribution2D for Alias2D {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
-        let (pdf, coord) = self.one.sample(u);
-        let n = self.width * self.height;
-        let index = (n as f32 * coord) as usize;
+        let (pdf_y, coord_y) = self.marginal.sample(u);
+        let y = (coord_y * self.marginal.entries.len() as f32) as usize;
 
-        let y = index / self.width;
-        let x = index % self.width;
+        let (pdf_x, coord_x) = self.conditional[y].sample(v);
 
-        (pdf, [(x as f32) / (self.width as f32), (y as f32) / (self.height as f32)])
+        (pdf_x * pdf_y, [coord_x, coord_y])
     }
 
     fn pdf(&self, [u, v]: [f32; 2]) -> f32 {
-        let n = self.width * self.height;
+        let pdf_y = self.marginal.pdf(v);
 
-        let x = (u * self.width as f32) as usize;
-        let y = (v * self.height as f32) as usize;
+        let y = (v * self.marginal.entries.len() as f32) as usize;
+        let pdf_x = self.conditional[y].pdf(u);
 
-        let index = (y * self.width) + x;
-        self.one.pdf(index as f32 / n as f32)
+        return pdf_y * pdf_x;
     }
 }
 
