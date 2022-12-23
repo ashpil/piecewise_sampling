@@ -1,4 +1,5 @@
 use crate::Distribution2D;
+use crate::utils;
 
 #[derive(Clone, Copy)]
 pub struct Entry {
@@ -28,7 +29,7 @@ impl Alias2D {
         let mut small = Vec::new();
         let mut large = Vec::new();
 
-        let weight_sum: f32 = image.iter().flatten().sum();
+        let weight_sum = utils::kahan_sum(image.iter().flatten().cloned());
 
         for (i, weight) in image.iter().flatten().enumerate() {
             let adjusted_weight = (weight * n as f32) / weight_sum;
@@ -40,7 +41,7 @@ impl Alias2D {
                 large.push(i as u32);
             }
         }
-        
+
         while !small.is_empty() && !large.is_empty() {
             let l = small.pop().unwrap();
             let g = large.pop().unwrap();

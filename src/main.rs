@@ -6,6 +6,7 @@ use std::time::Instant;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
+mod utils;
 mod inversion;
 mod alias;
 
