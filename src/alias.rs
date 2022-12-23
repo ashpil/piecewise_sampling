@@ -10,12 +10,12 @@ pub struct Entry {
 
 pub struct Alias1D {
     pub weight_sum: f32,
-    pub entries: Vec<Entry>,
+    pub entries: Box<[Entry]>,
 }
 
 impl Alias1D {
     // Vose O(n)
-    pub fn new(weights: &Vec<f32>) -> Self {
+    pub fn new(weights: &[f32]) -> Self {
         let n = weights.len();
 
         // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
@@ -68,7 +68,7 @@ impl Alias1D {
 
         Self {
             weight_sum,
-            entries,
+            entries: entries.into_boxed_slice(),
         }
     }
 }
@@ -95,11 +95,11 @@ impl Distribution1D for Alias1D {
 
 pub struct Alias2D {
     pub marginal: Alias1D,
-    pub conditional: Vec<Alias1D>,
+    pub conditional: Box<[Alias1D]>,
 }
 
 impl Alias2D {
-    pub fn new(image: &Vec<Vec<f32>>) -> Self {
+    pub fn new(image: &[Vec<f32>]) -> Self {
         let height = image.len();
         let width = image[0].len();
 
@@ -115,7 +115,7 @@ impl Alias2D {
 
         Self {
             marginal,
-            conditional,
+            conditional: conditional.into_boxed_slice(),
         }
     }
 }
