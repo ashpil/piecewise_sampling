@@ -1,6 +1,6 @@
 use crate::Distribution2D;
 
-pub struct InversionSampler {
+pub struct Inversion2D {
     pub width: usize,
     pub height: usize,
 
@@ -11,7 +11,7 @@ pub struct InversionSampler {
     pub marginal_cdf: Vec<f32>,
 }
 
-impl InversionSampler {
+impl Inversion2D {
     pub fn new(image: &Vec<Vec<f32>>, factor: usize) -> Self {
         let big_height = image.len();
         let big_width = image[0].len();
@@ -60,7 +60,7 @@ impl InversionSampler {
             marginal_cdf[i] /= marginal_pdf_integral[height];
         }
 
-        InversionSampler {
+        Self {
             width,
             height,
 
@@ -73,7 +73,7 @@ impl InversionSampler {
     }
 }
 
-impl Distribution2D for InversionSampler {
+impl Distribution2D for Inversion2D {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
         // perform binary search
         fn find_interval(a: &[f32], val: f32) -> usize {

@@ -7,14 +7,14 @@ pub struct Entry {
     alias: u32,
 }
 
-pub struct AliasSampler {
+pub struct Alias2D {
     pub width: usize,
     pub height: usize,
 
     pub entries: Vec<Entry>,
 }
 
-impl AliasSampler {
+impl Alias2D {
     // Vose O(n)
     pub fn new(image: &Vec<Vec<f32>>) -> Self {
         let height = image.len();
@@ -64,7 +64,7 @@ impl AliasSampler {
             entries[l as usize].select = 1.0;
         }
 
-        AliasSampler {
+        Self {
             width,
             height,
 
@@ -74,7 +74,7 @@ impl AliasSampler {
 }
 
 
-impl Distribution2D for AliasSampler {
+impl Distribution2D for Alias2D {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
         let n = self.width * self.height;
         let mut index = (n as f32 * u) as u32;
@@ -98,4 +98,3 @@ impl Distribution2D for AliasSampler {
         self.entries[(y * self.width) + x].pdf
     }
 }
-

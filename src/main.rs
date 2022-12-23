@@ -6,17 +6,25 @@ use std::time::Instant;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-mod inversion_sampler;
-use inversion_sampler::InversionSampler;
+mod inversion;
+mod alias;
 
-mod alias_sampler;
-use alias_sampler::AliasSampler;
+use inversion::Inversion2D;
+use alias::Alias2D;
+
+pub trait Distribution1D {
+    // takes in rand [0-1), returns (pdf, selected [0-1))
+    fn sample(&self, u: f32) -> (f32, f32);
+
+    // takes in coord [0-1), returns pdf
+    fn pdf(&self, u: f32) -> f32;
+}
 
 pub trait Distribution2D {
-    // takes in rand uv, returns (pdf, uv coords)
+    // takes in rand [0-1)x[0-1), returns (pdf, uv coords)
     fn sample(&self, uv: [f32; 2]) -> (f32, [f32; 2]);
 
-    // takes in uv coords, returns pdf
+    // takes in coords [0-1)x[0-1), returns pdf
     fn pdf(&self, uv: [f32; 2]) -> f32;
 
     // fills demo image with sample_count samples
@@ -81,7 +89,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = InversionSampler::new(&density_image, 1);
+        let sampler = Inversion2D::new(&density_image, 1);
         println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -97,7 +105,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = AliasSampler::new(&density_image);
+        let sampler = Alias2D::new(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
