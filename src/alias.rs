@@ -1,7 +1,7 @@
 use crate::{Distribution1D, Distribution2D};
 use crate::utils;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Entry {
     pdf: f32,
     select: f32,
@@ -34,7 +34,7 @@ impl Alias1D {
 
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = (weight * n as f32) / weight_sum;
-            entries[i].pdf = adjusted_weight;
+            entries[i].pdf = *weight;
             running_weights[i] = adjusted_weight;
             if adjusted_weight < 1.0 {
                 small.push(i as u32);
@@ -100,9 +100,6 @@ pub struct Alias2D {
 
 impl Alias2D {
     pub fn new(image: &[Vec<f32>]) -> Self {
-        let height = image.len();
-        let width = image[0].len();
-
         let mut conditional = Vec::with_capacity(image.len());
         let mut marginal_weights = Vec::with_capacity(image.len());
         for row in image {
@@ -140,4 +137,59 @@ impl Distribution2D for Alias2D {
         return pdf_y * pdf_x;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Alias1D;
+    use crate::Distribution1D;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use statrs::distribution::{ChiSquared, ContinuousCDF};
+
+    fn test_distribution(expected: &[f32], sample_count: usize) {
+        let dist = Alias1D::new(expected);
+        let mut observed = vec![0.0f32; expected.len()].into_boxed_slice();
+        let mut hist = vec![0u32; expected.len()].into_boxed_slice();
+        let mut rng = StdRng::seed_from_u64(0);
+
+        for _ in 0..sample_count {
+            let (pdf, coord) = dist.sample(rng.gen());
+            let idx = (coord * dist.entries.len() as f32).round() as usize;
+            assert_eq!(expected[idx], pdf);
+            hist[idx] += 1;
+        }
+
+        for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
+            *obs = (*weight as f32 / sample_count as f32) * dist.weight_sum;
+        }
+
+        let mut chsq = 0.0;
+        for (obs, exp) in observed.into_iter().zip(expected) {
+            let diff = obs - exp;
+            chsq += diff * diff / exp;
+        }
+
+        let pval = 1.0 - ChiSquared::new((expected.len() - 1) as f64).unwrap().cdf(chsq as f64);
+        assert!(pval >= 0.99, "failed chi-squared statistical test, p = {}", pval);
+    }
+
+    #[test]
+    fn basic1d() {
+        test_distribution(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+    }
+
+    #[test]
+    fn uniform1d() {
+        test_distribution(&[1.0; 10_000], 1_000_000);
+    }
+
+    #[test]
+    fn increasing1d() {
+        let mut distr = [0.0; 100];
+        for (i, weight) in distr.iter_mut().enumerate() {
+            *weight = (5 * (i + 1)) as f32;
+        }
+        test_distribution(&distr, 100_000);
+    }
+}
+
 
