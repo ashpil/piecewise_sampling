@@ -13,7 +13,11 @@ mod alias;
 use inversion::Inversion2D;
 use alias::Alias2D;
 
+// 1D piecewise constant distribution
 pub trait Distribution1D {
+    // constructor
+    fn build(weights: &[f32]) -> Self;
+
     // takes in rand [0-1), returns (pdf, selected idx)
     fn sample(&self, u: f32) -> (f32, usize);
 
@@ -21,7 +25,11 @@ pub trait Distribution1D {
     fn pdf(&self, u: usize) -> f32;
 }
 
+// 2D piecewise constant distribution
 pub trait Distribution2D {
+    // constructor
+    fn build(weights: &[Vec<f32>]) -> Self;
+
     // takes in rand [0-1)x[0-1), returns (pdf, uv coords)
     fn sample(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
 
@@ -35,8 +43,8 @@ pub trait Distribution2D {
 
         for rng in rngs {
             let (_, [x, y]) = self.sample(rng);
-            for is in 0..1 {
-                for js in 0..1 {
+            for is in -1..1 {
+                for js in -1..1 {
                     let j = (y as i32 + js).clamp(0, (height - 1) as i32) as usize;
                     let i = (x as i32 + is).clamp(0, (width - 1) as i32) as usize;
                     demo[j][i] = [1000.0, 0.0, 0.0];
@@ -70,7 +78,7 @@ fn main() {
     let density_image = source_image.iter().enumerate().map(|(row_idx, row)| {
         let sin_theta = (std::f32::consts::PI * (row_idx as f32 + 0.5) / (source_image.len() as f32)).sin();
         row.iter().map(|c| luminance(*c) * sin_theta).collect()
-    }).collect();
+    }).collect::<Vec<Vec<f32>>>();
 
     let sample_count = 65_536;
     let stratify = true;
@@ -86,7 +94,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Inversion2D::new(&density_image, 1);
+        let sampler = Inversion2D::build(&density_image);
         println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -102,7 +110,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Alias2D::new(&density_image);
+        let sampler = Alias2D::build(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();

@@ -11,13 +11,10 @@ pub struct Inversion2D {
     pub marginal_cdf: Vec<f32>,
 }
 
-impl Inversion2D {
-    pub fn new(image: &Vec<Vec<f32>>, factor: usize) -> Self {
-        let big_height = image.len();
-        let big_width = image[0].len();
-
-        let width = big_width / factor;
-        let height = big_height / factor;
+impl Distribution2D for Inversion2D {
+    fn build(image: &[Vec<f32>]) -> Self {
+        let height = image.len();
+        let width = image[0].len();
 
         let mut conditional_pdfs_integrals: Vec<Vec<f32>> = vec![vec![0.0; width + 1]; height];
         let mut conditional_cdfs = vec![vec![0.0; width + 1]; height];
@@ -25,14 +22,9 @@ impl Inversion2D {
         let mut marginal_pdf_integral = vec![0.0; height + 1];
         let mut marginal_cdf = vec![0.0; height + 1];
 
-        // calculate downsampled image
         for (row_index, row) in conditional_pdfs_integrals.iter_mut().enumerate() {
             for (col_index, pixel) in row[0..width].iter_mut().enumerate() {
-                for i in (row_index * factor)..((row_index + 1) * factor) {
-                    for j in (col_index * factor)..((col_index + 1) * factor) {
-                        *pixel = (*pixel).max(image[i][j]);
-                    }
-                }
+                *pixel = image[row_index][col_index];
             }
         }
 
@@ -71,9 +63,7 @@ impl Inversion2D {
             marginal_cdf,
         }
     }
-}
 
-impl Distribution2D for Inversion2D {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
         // perform binary search
         fn find_interval(a: &[f32], val: f32) -> usize {

@@ -13,9 +13,9 @@ pub struct Alias1D {
     pub entries: Box<[Entry]>,
 }
 
-impl Alias1D {
+impl Distribution1D for Alias1D {
     // Vose O(n)
-    pub fn new(weights: &[f32]) -> Self {
+    fn build(weights: &[f32]) -> Self {
         let n = weights.len();
 
         // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
@@ -71,9 +71,7 @@ impl Alias1D {
             entries: entries.into_boxed_slice(),
         }
     }
-}
 
-impl Distribution1D for Alias1D {
     fn sample(&self, u: f32) -> (f32, usize) {
         let scaled: f32 = (self.entries.len() as f32) * u;
         let mut index = scaled as usize;
@@ -97,27 +95,24 @@ pub struct Alias2D {
     pub conditional: Box<[Alias1D]>,
 }
 
-impl Alias2D {
-    pub fn new(image: &[Vec<f32>]) -> Self {
-        let mut conditional = Vec::with_capacity(image.len());
-        let mut marginal_weights = Vec::with_capacity(image.len());
-        for row in image {
-            let table = Alias1D::new(row);
+impl Distribution2D for Alias2D {
+    fn build(weights: &[Vec<f32>]) -> Self {
+        let mut conditional = Vec::with_capacity(weights.len());
+        let mut marginal_weights = Vec::with_capacity(weights.len());
+        for row in weights {
+            let table = Alias1D::build(row);
             marginal_weights.push(table.weight_sum);
             conditional.push(table);
         }
 
-        let marginal = Alias1D::new(&marginal_weights);
+        let marginal = Alias1D::build(&marginal_weights);
 
         Self {
             marginal,
             conditional: conditional.into_boxed_slice(),
         }
     }
-}
 
-
-impl Distribution2D for Alias2D {
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
         let (pdf_y, y) = self.marginal.sample(u);
         let (pdf_x, x) = self.conditional[y].sample(v);
@@ -141,7 +136,7 @@ mod tests {
     use statrs::distribution::{ChiSquared, ContinuousCDF};
 
     fn test_distribution(expected: &[f32], sample_count: usize) {
-        let dist = Alias1D::new(expected);
+        let dist = Alias1D::build(expected);
         let mut observed = vec![0.0f32; expected.len()].into_boxed_slice();
         let mut hist = vec![0u32; expected.len()].into_boxed_slice();
         let mut rng = StdRng::seed_from_u64(0);
