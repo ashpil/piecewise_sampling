@@ -88,6 +88,10 @@ impl Distribution1D for Alias1D {
     fn pdf(&self, u: usize) -> f32 {
         self.entries[u].pdf
     }
+
+    fn integral(&self) -> f32 {
+        self.weight_sum
+    }
 }
 
 pub struct Alias2D {
@@ -101,7 +105,7 @@ impl Distribution2D for Alias2D {
         let mut marginal_weights = Vec::with_capacity(weights.len());
         for row in weights {
             let table = Alias1D::build(row);
-            marginal_weights.push(table.weight_sum);
+            marginal_weights.push(table.integral());
             conditional.push(table);
         }
 
@@ -131,45 +135,16 @@ impl Distribution2D for Alias2D {
 #[cfg(test)]
 mod tests {
     use super::Alias1D;
-    use crate::Distribution1D;
-    use rand::{rngs::StdRng, Rng, SeedableRng};
-    use statrs::distribution::{ChiSquared, ContinuousCDF};
-
-    fn test_distribution(expected: &[f32], sample_count: usize) {
-        let dist = Alias1D::build(expected);
-        let mut observed = vec![0.0f32; expected.len()].into_boxed_slice();
-        let mut hist = vec![0u32; expected.len()].into_boxed_slice();
-        let mut rng = StdRng::seed_from_u64(0);
-
-        for _ in 0..sample_count {
-            let (pdf, idx) = dist.sample(rng.gen());
-            assert_eq!(expected[idx], pdf);
-            assert_eq!(pdf, dist.pdf(idx));
-            hist[idx] += 1;
-        }
-
-        for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
-            *obs = (*weight as f32 / sample_count as f32) * dist.weight_sum;
-        }
-
-        let mut chsq = 0.0;
-        for (obs, exp) in observed.into_iter().zip(expected) {
-            let diff = obs - exp;
-            chsq += diff * diff / exp;
-        }
-
-        let pval = 1.0 - ChiSquared::new((expected.len() - 1) as f64).unwrap().cdf(chsq as f64);
-        assert!(pval >= 0.99, "failed chi-squared statistical test, p = {}", pval);
-    }
+    use crate::utils::test_distribution_1d;
 
     #[test]
     fn basic1d() {
-        test_distribution(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+        test_distribution_1d::<Alias1D>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
     }
 
     #[test]
     fn uniform1d() {
-        test_distribution(&[1.0; 10_000], 1_000_000);
+        test_distribution_1d::<Alias1D>(&[1.0; 10_000], 1_000_000);
     }
 
     #[test]
@@ -178,7 +153,7 @@ mod tests {
         for (i, weight) in distr.iter_mut().enumerate() {
             *weight = (5 * (i + 1)) as f32;
         }
-        test_distribution(&distr, 100_000);
+        test_distribution_1d::<Alias1D>(&distr, 100_000);
     }
 }
 

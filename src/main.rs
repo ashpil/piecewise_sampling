@@ -23,6 +23,9 @@ pub trait Distribution1D {
 
     // takes in coord, returns pdf
     fn pdf(&self, u: usize) -> f32;
+
+    // sum of all weights
+    fn integral(&self) -> f32;
 }
 
 // 2D piecewise constant distribution
