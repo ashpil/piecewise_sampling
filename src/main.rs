@@ -14,19 +14,19 @@ use inversion::Inversion2D;
 use alias::Alias2D;
 
 pub trait Distribution1D {
-    // takes in rand [0-1), returns (pdf, selected [0-1))
-    fn sample(&self, u: f32) -> (f32, f32);
+    // takes in rand [0-1), returns (pdf, selected idx)
+    fn sample(&self, u: f32) -> (f32, usize);
 
-    // takes in coord [0-1), returns pdf
-    fn pdf(&self, u: f32) -> f32;
+    // takes in coord, returns pdf
+    fn pdf(&self, u: usize) -> f32;
 }
 
 pub trait Distribution2D {
     // takes in rand [0-1)x[0-1), returns (pdf, uv coords)
-    fn sample(&self, uv: [f32; 2]) -> (f32, [f32; 2]);
+    fn sample(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
 
-    // takes in coords [0-1)x[0-1), returns pdf
-    fn pdf(&self, uv: [f32; 2]) -> f32;
+    // takes in coords, returns pdf
+    fn pdf(&self, uv: [usize; 2]) -> f32;
 
     // fills demo image with sample_count samples
     fn fill_demo_image(&self, demo: &mut Vec<Vec<[f32; 3]>>, rngs: impl Iterator<Item = [f32; 2]>) {
@@ -34,15 +34,11 @@ pub trait Distribution2D {
         let height = demo.len();
 
         for rng in rngs {
-            let (pdf, [x, y]) = self.sample(rng);
-            let mpdf = self.pdf([x, y]);
-            if (pdf - mpdf).abs() > 0.01 {
-                panic!("Something wrong: got {} as pdf, but reconstructed {} at {}x{}", pdf, mpdf, x, y);
-            }
-            for is in -1..1 {
-                for js in -1..1 {
-                    let j = ((y * height as f32) as i32 + js).clamp(0, (height - 1) as i32) as usize;
-                    let i = ((x * width as f32) as i32 + is).clamp(0, (width - 1) as i32) as usize;
+            let (_, [x, y]) = self.sample(rng);
+            for is in 0..1 {
+                for js in 0..1 {
+                    let j = (y as i32 + js).clamp(0, (height - 1) as i32) as usize;
+                    let i = (x as i32 + is).clamp(0, (width - 1) as i32) as usize;
                     demo[j][i] = [1000.0, 0.0, 0.0];
                 }
             }
@@ -76,7 +72,7 @@ fn main() {
         row.iter().map(|c| luminance(*c) * sin_theta).collect()
     }).collect();
 
-    let sample_count = 100_000;
+    let sample_count = 65_536;
     let stratify = true;
     let rands: Vec<[f32; 2]> = if stratify {
         let mut rands = Vec::with_capacity(sample_count);

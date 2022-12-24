@@ -74,7 +74,7 @@ impl Inversion2D {
 }
 
 impl Distribution2D for Inversion2D {
-    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
+    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
         // perform binary search
         fn find_interval(a: &[f32], val: f32) -> usize {
             let mut first = 0;
@@ -95,23 +95,16 @@ impl Distribution2D for Inversion2D {
         }
 
         let offset_v = find_interval(&self.marginal_cdf, v);
-        let dv = (v - self.marginal_cdf[offset_v]) / (self.marginal_cdf[offset_v + 1] - self.marginal_cdf[offset_v]);
         let pdf_v = self.marginal_pdf_integral[offset_v] / self.marginal_pdf_integral[self.height];
-        let v_result = (offset_v as f32 + dv) / self.height as f32;
 
         let offset_u = find_interval(&self.conditional_cdfs[offset_v], u);
-        let du = (u - self.conditional_cdfs[offset_v][offset_u]) / (self.conditional_cdfs[offset_v][offset_u + 1] - self.conditional_cdfs[offset_v][offset_u]);
         let pdf_u = self.conditional_pdfs_integrals[offset_v][offset_u] / self.conditional_pdfs_integrals[offset_v][self.width];
-        let u_result = (offset_u as f32 + du) / self.width as f32;
 
-        (pdf_v * pdf_u, [u_result, v_result])
+        (pdf_v * pdf_u, [offset_u, offset_v])
     }
 
-    fn pdf(&self, [u, v]: [f32; 2]) -> f32 {
-        let x = (u * self.width as f32) as usize;
-        let y = (v * self.height as f32) as usize;
-
-        self.conditional_pdfs_integrals[y][x] / self.marginal_pdf_integral[self.height]
+    fn pdf(&self, [u, v]: [usize; 2]) -> f32 {
+        self.conditional_pdfs_integrals[v][u] / self.marginal_pdf_integral[self.height]
     }
 }
 

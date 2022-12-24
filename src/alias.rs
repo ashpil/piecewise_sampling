@@ -74,22 +74,21 @@ impl Alias1D {
 }
 
 impl Distribution1D for Alias1D {
-    fn sample(&self, u: f32) -> (f32, f32) {
+    fn sample(&self, u: f32) -> (f32, usize) {
         let scaled: f32 = (self.entries.len() as f32) * u;
-        let mut index = scaled as u32;
-        let mut entry = self.entries[index as usize];
+        let mut index = scaled as usize;
+        let mut entry = self.entries[index];
         let v = scaled - index as f32;
         if entry.select <= v {
-            index = entry.alias;
+            index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
         }
 
-        (entry.pdf, (index as f32) / (self.entries.len() as f32))
+        (entry.pdf, index)
     }
 
-    fn pdf(&self, u: f32) -> f32 {
-        let idx = (u * self.entries.len() as f32) as usize;
-        self.entries[idx].pdf
+    fn pdf(&self, u: usize) -> f32 {
+        self.entries[u].pdf
     }
 }
 
@@ -119,20 +118,16 @@ impl Alias2D {
 
 
 impl Distribution2D for Alias2D {
-    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [f32; 2]) {
-        let (pdf_y, coord_y) = self.marginal.sample(u);
-        let y = (coord_y * self.marginal.entries.len() as f32) as usize;
+    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
+        let (pdf_y, y) = self.marginal.sample(u);
+        let (pdf_x, x) = self.conditional[y].sample(v);
 
-        let (pdf_x, coord_x) = self.conditional[y].sample(v);
-
-        (pdf_x * pdf_y, [coord_x, coord_y])
+        (pdf_x * pdf_y, [x, y])
     }
 
-    fn pdf(&self, [u, v]: [f32; 2]) -> f32 {
+    fn pdf(&self, [u, v]: [usize; 2]) -> f32 {
         let pdf_y = self.marginal.pdf(v);
-
-        let y = (v * self.marginal.entries.len() as f32) as usize;
-        let pdf_x = self.conditional[y].pdf(u);
+        let pdf_x = self.conditional[v].pdf(u);
 
         return pdf_y * pdf_x;
     }
@@ -152,9 +147,9 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(0);
 
         for _ in 0..sample_count {
-            let (pdf, coord) = dist.sample(rng.gen());
-            let idx = (coord * dist.entries.len() as f32).round() as usize;
+            let (pdf, idx) = dist.sample(rng.gen());
             assert_eq!(expected[idx], pdf);
+            assert_eq!(pdf, dist.pdf(idx));
             hist[idx] += 1;
         }
 
