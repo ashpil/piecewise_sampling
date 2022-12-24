@@ -28,7 +28,7 @@ pub fn test_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: u
 
     for _ in 0..sample_count {
         let (pdf, idx) = dist.sample(rng.gen());
-        assert_eq!(expected[idx], pdf);
+        assert!((expected[idx] - pdf).abs() < 0.001);
         assert_eq!(pdf, dist.pdf(idx));
         hist[idx] += 1;
     }
