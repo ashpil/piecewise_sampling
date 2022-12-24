@@ -65,23 +65,8 @@ impl Distribution2D for Inversion2D {
     }
 
     fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
-        // perform binary search
         fn find_interval(a: &[f32], val: f32) -> usize {
-            let mut first = 0;
-            let mut len = a.len();
-
-            while len > 0 {
-                let half = len >> 1;
-                let middle = first + half;
-                if a[middle] <= val {
-                    first = middle + 1;
-                    len -= half + 1;
-                } else {
-                    len = half;
-                }
-            }
-
-            (first - 1).clamp(0, a.len() - 2)
+            (a.partition_point(|p| *p <= val) - 1).clamp(0, a.len() - 2)
         }
 
         let offset_v = find_interval(&self.marginal_cdf, v);
