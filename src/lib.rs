@@ -1,5 +1,3 @@
-#![feature(new_uninit)]
-
 mod utils;
 
 pub mod inversion;

@@ -11,7 +11,7 @@ use pdf_maker::inversion::Inversion2D;
 use pdf_maker::alias::Alias2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
-    return r * 0.2126 + g * 0.7152 + b * 0.0722;
+    r * 0.2126 + g * 0.7152 + b * 0.0722
 }
 
 fn main() {

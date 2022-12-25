@@ -26,10 +26,7 @@ impl Distribution1D for Inversion1D {
     }
 
     fn sample(&self, u: f32) -> (f32, usize) {
-        fn find_interval(a: &[f32], val: f32) -> usize {
-            a.partition_point(|p| *p <= val) - 1
-        }
-        let offset = find_interval(&self.cdf, u);
+        let offset = self.cdf.partition_point(|p| *p <= u) - 1;
         let pdf = (self.cdf[offset + 1] - self.cdf[offset]) * self.weight_sum;
         (pdf, offset)
     }

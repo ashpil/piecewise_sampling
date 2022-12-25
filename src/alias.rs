@@ -24,7 +24,7 @@ impl Distribution1D for Alias1D {
         // would be nice if rust supported other float rounding modes...
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = vec![Entry { pdf: 0.0, select: 0.0, alias: 0 }; n];
+        let mut entries = vec![Entry { pdf: 0.0, select: 0.0, alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
@@ -66,7 +66,7 @@ impl Distribution1D for Alias1D {
 
         Self {
             weight_sum,
-            entries: entries.into_boxed_slice(),
+            entries,
         }
     }
 
