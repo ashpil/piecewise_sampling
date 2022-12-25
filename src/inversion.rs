@@ -1,4 +1,4 @@
-use crate::distribution::{Distribution1D, Distribution2D};
+use crate::distribution::Distribution1D;
 
 pub struct Inversion1D {
     pub weight_sum: f32,
@@ -37,44 +37,6 @@ impl Distribution1D for Inversion1D {
 
     fn integral(&self) -> f32 {
         return self.weight_sum;
-    }
-}
-
-pub struct Inversion2D {
-    pub marginal: Inversion1D,
-    pub conditional: Box<[Inversion1D]>,
-}
-
-impl Distribution2D for Inversion2D {
-    fn build(weights: &[Vec<f32>]) -> Self {
-        let mut conditional = Vec::with_capacity(weights.len());
-        let mut marginal_weights = Vec::with_capacity(weights.len());
-        for row in weights {
-            let table = Inversion1D::build(row);
-            marginal_weights.push(table.integral());
-            conditional.push(table);
-        }
-
-        let marginal = Inversion1D::build(&marginal_weights);
-
-        Self {
-            marginal,
-            conditional: conditional.into_boxed_slice(),
-        }
-    }
-
-    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
-        let (pdf_y, y) = self.marginal.sample(u);
-        let (pdf_x, x) = self.conditional[y].sample(v);
-
-        (pdf_x * pdf_y, [x, y])
-    }
-
-    fn pdf(&self, [u, v]: [usize; 2]) -> f32 {
-        let pdf_y = self.marginal.pdf(v);
-        let pdf_x = self.conditional[v].pdf(u);
-
-        return pdf_y * pdf_x;
     }
 }
 

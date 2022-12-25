@@ -7,8 +7,9 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 use pdf_maker::distribution::Distribution2D;
-use pdf_maker::inversion::Inversion2D;
-use pdf_maker::alias::Alias2D;
+use pdf_maker::inversion::Inversion1D;
+use pdf_maker::alias::Alias1D;
+use pdf_maker::adapter2d::Adapter2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
     r * 0.2126 + g * 0.7152 + b * 0.0722
@@ -49,7 +50,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Inversion2D::build(&density_image);
+        let sampler = Adapter2D::<Inversion1D>::build(&density_image);
         println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -65,7 +66,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Alias2D::build(&density_image);
+        let sampler = Adapter2D::<Alias1D>::build(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
