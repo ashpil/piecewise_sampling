@@ -18,7 +18,7 @@ pub trait Distribution1D {
 // 2D piecewise constant distribution
 pub trait Distribution2D {
     // constructor
-    fn build(weights: &[Vec<f32>]) -> Self;
+    fn build(weights: &Data2D<f32>) -> Self;
 
     // takes in rand [0-1)x[0-1), returns (pdf, uv coords)
     fn sample(&self, uv: [f32; 2]) -> (f32, [usize; 2]);

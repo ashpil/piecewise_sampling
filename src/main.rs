@@ -32,10 +32,13 @@ fn main() {
     }).unwrap().layer_data.channel_data.pixels;
 
     // assuming environment map
-    let density_image = source_image.iter().enumerate().map(|(row_idx, row)| {
+    let mut density_image = Data2D::new_same(source_image.width(), source_image.height(), 0.0);
+    for (row_idx, row) in source_image.iter().enumerate() {
         let sin_theta = (std::f32::consts::PI * (row_idx as f32 + 0.5) / (source_image.height() as f32)).sin();
-        row.iter().map(|c| luminance(*c) * sin_theta).collect()
-    }).collect::<Vec<Vec<f32>>>();
+        for (col_idx, pixel) in row.iter().enumerate() {
+            density_image[row_idx][col_idx] = luminance(*pixel) * sin_theta;
+        }
+    }
 
     let sample_count = 65_536;
     let stratify = true;

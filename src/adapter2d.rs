@@ -1,3 +1,4 @@
+use crate::data2d::Data2D;
 use crate::distribution::{Distribution1D, Distribution2D};
 
 pub struct Adapter2D<D: Distribution1D> {
@@ -6,10 +7,11 @@ pub struct Adapter2D<D: Distribution1D> {
 }
 
 impl<D : Distribution1D> Distribution2D for Adapter2D<D> {
-    fn build(weights: &[Vec<f32>]) -> Self {
-        let mut conditional = Vec::with_capacity(weights.len());
-        let mut marginal_weights = Vec::with_capacity(weights.len());
-        for row in weights {
+    fn build(weights: &Data2D<f32>) -> Self {
+        let mut conditional = Vec::with_capacity(weights.height());
+        let mut marginal_weights = Vec::with_capacity(weights.height());
+
+        for row in weights.iter() {
             let table = D::build(row);
             marginal_weights.push(table.integral());
             conditional.push(table);
