@@ -6,6 +6,7 @@ use std::time::Instant;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
+use pdf_maker::data2d::Data2D;
 use pdf_maker::distribution::Distribution2D;
 use pdf_maker::inversion::Inversion1D;
 use pdf_maker::alias::Alias1D;
@@ -25,14 +26,14 @@ fn main() {
     let source_image = read_first_rgba_layer_from_file(args[1].clone(), |resolution, _| {
         let width = resolution.width();
         let height = resolution.height();
-        vec![vec![[0.0, 0.0, 0.0]; width]; height]
+        Data2D::new_same(width, height, [0.0, 0.0, 0.0])
     }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
         buffer[pos.y()][pos.x()] = [r, g, b];
     }).unwrap().layer_data.channel_data.pixels;
 
     // assuming environment map
     let density_image = source_image.iter().enumerate().map(|(row_idx, row)| {
-        let sin_theta = (std::f32::consts::PI * (row_idx as f32 + 0.5) / (source_image.len() as f32)).sin();
+        let sin_theta = (std::f32::consts::PI * (row_idx as f32 + 0.5) / (source_image.height() as f32)).sin();
         row.iter().map(|c| luminance(*c) * sin_theta).collect()
     }).collect::<Vec<Vec<f32>>>();
 
@@ -58,7 +59,7 @@ fn main() {
         sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for inversion method sampling", sampling_start.elapsed().as_secs_f32());
 
-        write_rgb_file("inversion_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
+        write_rgb_file("inversion_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
             (p[0], p[1], p[2])
         }).unwrap();
@@ -74,7 +75,7 @@ fn main() {
         sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for alias method sampling", start.elapsed().as_secs_f32());
 
-        write_rgb_file("alias_demo.exr", demo_image[0].len(), demo_image.len(), |x, y| {
+        write_rgb_file("alias_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
             (p[0], p[1], p[2])
         }).unwrap();

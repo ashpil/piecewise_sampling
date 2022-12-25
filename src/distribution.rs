@@ -1,3 +1,5 @@
+use crate::data2d::Data2D;
+
 // 1D piecewise constant distribution
 pub trait Distribution1D {
     // constructor
@@ -25,16 +27,13 @@ pub trait Distribution2D {
     fn pdf(&self, uv: [usize; 2]) -> f32;
 
     // fills demo image with sample_count samples
-    fn fill_demo_image(&self, demo: &mut Vec<Vec<[f32; 3]>>, rngs: impl Iterator<Item = [f32; 2]>) {
-        let width = demo[0].len();
-        let height = demo.len();
-
+    fn fill_demo_image(&self, demo: &mut Data2D<[f32; 3]>, rngs: impl Iterator<Item = [f32; 2]>) {
         for rng in rngs {
             let (_, [x, y]) = self.sample(rng);
             for is in -1..1 {
                 for js in -1..1 {
-                    let j = (y as i32 + js).clamp(0, (height - 1) as i32) as usize;
-                    let i = (x as i32 + is).clamp(0, (width - 1) as i32) as usize;
+                    let j = (y as i32 + js).clamp(0, (demo.height() - 1) as i32) as usize;
+                    let i = (x as i32 + is).clamp(0, (demo.width() - 1) as i32) as usize;
                     demo[j][i] = [1000.0, 0.0, 0.0];
                 }
             }
