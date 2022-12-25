@@ -1,4 +1,4 @@
-use crate::{Distribution1D, Distribution2D};
+use crate::distribution::{Distribution1D, Distribution2D};
 use crate::utils;
 
 #[derive(Clone, Copy, Debug)]

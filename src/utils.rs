@@ -2,7 +2,7 @@ use num_traits::Float;
 
 #[cfg(test)]
 use {
-    crate::Distribution1D,
+    crate::distribution::Distribution1D,
     rand::{rngs::StdRng, Rng, SeedableRng},
     statrs::distribution::{ChiSquared, ContinuousCDF},
 };

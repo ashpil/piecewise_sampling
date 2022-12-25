@@ -13,4 +13,13 @@ num-traits = "0.2"
 
 [dev-dependencies]
 statrs = "0.16"
+criterion = "0.3"
+
+[profile.release]
+lto = true
+debug = true
+
+[[bench]]
+name = "alias1d"
+harness = false
 

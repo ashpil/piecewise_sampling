@@ -1,4 +1,4 @@
-use crate::{Distribution1D, Distribution2D};
+use crate::distribution::{Distribution1D, Distribution2D};
 
 pub struct Inversion1D {
     pub weight_sum: f32,
