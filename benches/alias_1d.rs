@@ -5,7 +5,7 @@ use pdf_maker::alias::Alias1D;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 fn alias_1d_build(c: &mut Criterion) {
-    c.bench_function("alias_1d_build", |b| b.iter(|| Alias1D::build(black_box(&[1.0; 1_000_000]))));
+    c.bench_function("alias_1d_build", |b| b.iter(|| Alias1D::build(black_box(&[1.0; 1_500_000]))));
 }
 
 fn alias_1d_sample(c: &mut Criterion) {
@@ -16,3 +16,4 @@ fn alias_1d_sample(c: &mut Criterion) {
 
 criterion_group!(benches, alias_1d_build, alias_1d_sample);
 criterion_main!(benches);
+

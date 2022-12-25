@@ -22,9 +22,8 @@ impl Distribution1D for Alias1D {
         // will give us numbers rounded to nearest float, which might be the next integer over, not
         // the actual one
         // would be nice if rust supported other float rounding modes...
-        assert!(n < 2_000_000, "Alias1D not relaible for distributions with more than 2,000,000 elements");
+        assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut running_weights = vec![0.0; n];
         let mut entries = vec![Entry { pdf: 0.0, select: 0.0, alias: 0 }; n];
 
         let mut small = Vec::new();
@@ -35,7 +34,7 @@ impl Distribution1D for Alias1D {
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = (weight * n as f32) / weight_sum;
             entries[i].pdf = *weight;
-            running_weights[i] = adjusted_weight;
+            entries[i].select = adjusted_weight;
             if adjusted_weight < 1.0 {
                 small.push(i as u32);
             } else {
@@ -48,10 +47,9 @@ impl Distribution1D for Alias1D {
             let g = large.pop().unwrap();
 
             entries[l as usize].alias = g;
-            entries[l as usize].select = running_weights[l as usize];
-            running_weights[g as usize] = (running_weights[g as usize] + running_weights[l as usize]) - 1.0;
+            entries[g as usize].select = (entries[g as usize].select + entries[l as usize].select) - 1.0;
 
-            if running_weights[g as usize] < 1.0 {
+            if entries[g as usize].select < 1.0 {
                 small.push(g);
             } else {
                 large.push(g);
