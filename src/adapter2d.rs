@@ -38,5 +38,13 @@ impl<D : Distribution1D> Distribution2D for Adapter2D<D> {
 
         return pdf_y * pdf_x;
     }
+
+    fn height(&self) -> usize {
+        self.conditional.len()
+    }
+
+    fn width(&self) -> usize {
+        self.conditional[0].size()
+    }
 }
 

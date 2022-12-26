@@ -13,6 +13,9 @@ pub trait Distribution1D {
 
     // sum of all weights
     fn integral(&self) -> f32;
+
+    // range of sampled idxs, should be len of weights
+    fn size(&self) -> usize;
 }
 
 // 2D piecewise constant distribution
@@ -25,6 +28,9 @@ pub trait Distribution2D {
 
     // takes in coords, returns pdf
     fn pdf(&self, uv: [usize; 2]) -> f32;
+
+    fn width(&self) -> usize;
+    fn height(&self) -> usize;
 
     // fills demo image with sample_count samples
     fn fill_demo_image(&self, demo: &mut Data2D<[f32; 3]>, rngs: impl Iterator<Item = [f32; 2]>) {

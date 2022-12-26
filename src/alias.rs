@@ -90,6 +90,10 @@ impl Distribution1D for Alias1D {
     fn integral(&self) -> f32 {
         self.weight_sum
     }
+
+    fn size(&self) -> usize {
+        self.entries.len()
+    }
 }
 
 #[cfg(test)]

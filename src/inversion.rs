@@ -38,6 +38,10 @@ impl Distribution1D for Inversion1D {
     fn integral(&self) -> f32 {
         return self.weight_sum;
     }
+
+    fn size(&self) -> usize {
+        self.cdf.len()
+    }
 }
 
 #[cfg(test)]
