@@ -36,7 +36,7 @@ impl<D : Distribution1D> Distribution2D for Adapter2D<D> {
         let pdf_y = self.marginal.pdf(v);
         let pdf_x = self.conditional[v].pdf(u);
 
-        return pdf_y * pdf_x;
+        pdf_y * pdf_x
     }
 
     fn height(&self) -> usize {
