@@ -56,10 +56,15 @@ impl Distribution1D for Alias1D {
             }
         }
 
-        while let Some(g) = large.pop() {
-            entries[g as usize].select = 1.0;
-        }
+        // the select for entries in `large` should already all be >= 1.0, so 
+        // we don't need to update them here
+        //
+        //while let Some(g) = large.pop() {
+        //    entries[g as usize].select = 1.0;
+        //}
 
+        // these are actually large but are in small due to float error
+        // should be slightly less than 1.0, we need to make sure they're 1.0
         while let Some(l) = small.pop() {
             entries[l as usize].select = 1.0;
         }
@@ -75,7 +80,7 @@ impl Distribution1D for Alias1D {
         let mut index = scaled as usize;
         let mut entry = self.entries[index];
         let v = scaled - index as f32;
-        if entry.select <= v {
+        if entry.select < v {
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
         }
