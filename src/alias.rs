@@ -88,6 +88,22 @@ impl Distribution1D for Alias1D {
         (entry.pdf, index)
     }
 
+    fn sample_continuous(&self, u: f32) -> (f32, f32) {
+        let scaled: f32 = (self.entries.len() as f32) * u;
+        let mut index = scaled as usize;
+        let mut entry = self.entries[index];
+        let v = scaled - index as f32;
+        let mut du = v / entry.select;
+
+        if entry.select < v {
+            index = entry.alias as usize;
+            entry = self.entries[entry.alias as usize];
+            du = v / (1.0 - entry.select);
+        }
+
+        (entry.pdf, (index as f32 + du) / self.entries.len() as f32)
+    }
+
     fn pdf(&self, u: usize) -> f32 {
         self.entries[u].pdf
     }

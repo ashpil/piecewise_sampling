@@ -5,8 +5,11 @@ pub trait Distribution1D {
     // constructor
     fn build(weights: &[f32]) -> Self;
 
-    // takes in rand [0-1), returns (pdf, selected idx)
+    // takes in rand [0-1), returns (pdf, sampled idx)
     fn sample_discrete(&self, u: f32) -> (f32, usize);
+
+    // takes in rand [0-1), returns (pdf, sampled [0-1))
+    fn sample_continuous(&self, u: f32) -> (f32, f32);
 
     // takes in coord, returns pdf
     fn pdf(&self, u: usize) -> f32;
@@ -23,7 +26,7 @@ pub trait Distribution2D {
     // constructor
     fn build(weights: &Data2D<f32>) -> Self;
 
-    // takes in rand [0-1)x[0-1), returns (pdf, uv coords)
+    // takes in rand [0-1)x[0-1), returns (pdf, sampled uv coords)
     fn sample_discrete(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
 
     // takes in coords, returns pdf
