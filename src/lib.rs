@@ -1,3 +1,5 @@
+#![feature(sort_floats)]
+
 mod utils;
 
 pub mod data2d;

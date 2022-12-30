@@ -87,26 +87,55 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: 
 #[cfg(test)]
 macro_rules! distribution_1d_tests {
     ($impl:path) => {
-        mod distribution {
-            use crate::distribution::chisq_distribution_1d;
+        mod distribution1d {
+            use crate::distribution::{
+                Distribution1D,
+                chisq_distribution_1d,
+            };
+            use $impl as Dist;
 
             #[test]
-            fn basic1d() {
-                chisq_distribution_1d::<$impl>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+            fn basic() {
+                chisq_distribution_1d::<Dist>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
             }
 
             #[test]
-            fn uniform1d() {
-                chisq_distribution_1d::<$impl>(&[1.0; 10_000], 1_000_000);
+            fn uniform() {
+                chisq_distribution_1d::<Dist>(&[1.0; 10_000], 1_000_000);
             }
 
             #[test]
-            fn increasing1d() {
+            fn increasing() {
                 let mut distr = [0.0; 100];
                 for (i, weight) in distr.iter_mut().enumerate() {
                     *weight = (5 * (i + 1)) as f32;
                 }
-                chisq_distribution_1d::<$impl>(&distr, 100_000);
+                chisq_distribution_1d::<Dist>(&distr, 100_000);
+            }
+
+            #[test]
+            fn surjective() {
+                let dist = Dist::build(&[1.0; 1_000]);
+                let sample_count = 1000;
+                let mut values = Vec::with_capacity(sample_count);
+                for i in 0..sample_count {
+                    let (_, x) = dist.sample_continuous(i as f32 / sample_count as f32);
+                    values.push(x);
+                }
+                values.sort_floats();
+
+                {
+                    let mut last = *values.first().unwrap();
+                    for i in 1..sample_count {
+                        let current = values[i];
+                        assert!((last - current).abs() <= (1.0 / sample_count as f32) * 1.001);
+                        last = current;
+                    }
+                }
+                let max = values.last().unwrap();
+                let min = values.first().unwrap();
+                assert!((1.0 - max).abs() < 0.01);
+                assert!((0.0 - min).abs() < 0.01);
             }
         }
     }
