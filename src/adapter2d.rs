@@ -25,9 +25,9 @@ impl<D : Distribution1D> Distribution2D for Adapter2D<D> {
         }
     }
 
-    fn sample(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
-        let (pdf_y, y) = self.marginal.sample(u);
-        let (pdf_x, x) = self.conditional[y].sample(v);
+    fn sample_discrete(&self, [u, v]: [f32; 2]) -> (f32, [usize; 2]) {
+        let (pdf_y, y) = self.marginal.sample_discrete(u);
+        let (pdf_x, x) = self.conditional[y].sample_discrete(v);
 
         (pdf_x * pdf_y, [x, y])
     }

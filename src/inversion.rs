@@ -25,7 +25,7 @@ impl Distribution1D for Inversion1D {
         }
     }
 
-    fn sample(&self, u: f32) -> (f32, usize) {
+    fn sample_discrete(&self, u: f32) -> (f32, usize) {
         let offset = self.cdf.partition_point(|p| *p <= u) - 1;
         let pdf = (self.cdf[offset + 1] - self.cdf[offset]) * self.weight_sum;
         (pdf, offset)
