@@ -1,12 +1,13 @@
 use crate::data2d::Data2D;
 
 // 1D piecewise constant distribution
+// unless otherwise mentioned, sampling functions are discrete
 pub trait Distribution1D {
     // constructor
     fn build(weights: &[f32]) -> Self;
 
     // takes in rand [0-1), returns (pdf, sampled idx)
-    fn sample_discrete(&self, u: f32) -> (f32, usize);
+    fn sample(&self, u: f32) -> (f32, usize);
 
     // takes in rand [0-1), returns (pdf, sampled [0-1))
     fn sample_continuous(&self, u: f32) -> (f32, f32);
@@ -27,7 +28,7 @@ pub trait Distribution2D {
     fn build(weights: &Data2D<f32>) -> Self;
 
     // takes in rand [0-1)x[0-1), returns (pdf, sampled uv coords)
-    fn sample_discrete(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
+    fn sample(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
 
     // takes in coords, returns pdf
     fn pdf(&self, uv: [usize; 2]) -> f32;
@@ -38,7 +39,7 @@ pub trait Distribution2D {
     // fills demo image with sample_count samples
     fn fill_demo_image(&self, demo: &mut Data2D<[f32; 3]>, rngs: impl Iterator<Item = [f32; 2]>) {
         for rng in rngs {
-            let (_, [x, y]) = self.sample_discrete(rng);
+            let (_, [x, y]) = self.sample(rng);
             for is in -1..1 {
                 for js in -1..1 {
                     let j = (y as i32 + js).clamp(0, (demo.height() - 1) as i32) as usize;
@@ -64,7 +65,7 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: 
     let mut rng = StdRng::seed_from_u64(0);
 
     for _ in 0..sample_count {
-        let (pdf, idx) = dist.sample_discrete(rng.gen());
+        let (pdf, idx) = dist.sample(rng.gen());
         assert!((expected[idx] - pdf).abs() < 0.001);
         assert_eq!(pdf, dist.pdf(idx));
         hist[idx] += 1;

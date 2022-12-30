@@ -25,14 +25,14 @@ impl Distribution1D for Inversion1D {
         }
     }
 
-    fn sample_discrete(&self, u: f32) -> (f32, usize) {
+    fn sample(&self, u: f32) -> (f32, usize) {
         let offset = self.cdf.partition_point(|p| *p <= u) - 1;
         let pdf = (self.cdf[offset + 1] - self.cdf[offset]) * self.weight_sum;
         (pdf, offset)
     }
 
     fn sample_continuous(&self, u: f32) -> (f32, f32) {
-        let (pdf, offset) = self.sample_discrete(u);
+        let (pdf, offset) = self.sample(u);
         let du = (u - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
         (pdf, (offset as f32 + du) / self.size() as f32)
     }

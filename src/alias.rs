@@ -75,7 +75,7 @@ impl Distribution1D for Alias1D {
         }
     }
 
-    fn sample_discrete(&self, u: f32) -> (f32, usize) {
+    fn sample(&self, u: f32) -> (f32, usize) {
         let scaled: f32 = (self.entries.len() as f32) * u;
         let mut index = scaled as usize;
         let mut entry = self.entries[index];
