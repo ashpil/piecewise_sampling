@@ -103,26 +103,7 @@ impl Distribution1D for Alias1D {
 
 #[cfg(test)]
 mod tests {
-    use super::Alias1D;
-    use crate::utils::test_distribution_1d;
-
-    #[test]
-    fn basic1d() {
-        test_distribution_1d::<Alias1D>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
-    }
-
-    #[test]
-    fn uniform1d() {
-        test_distribution_1d::<Alias1D>(&[1.0; 10_000], 1_000_000);
-    }
-
-    #[test]
-    fn increasing1d() {
-        let mut distr = [0.0; 100];
-        for (i, weight) in distr.iter_mut().enumerate() {
-            *weight = (5 * (i + 1)) as f32;
-        }
-        test_distribution_1d::<Alias1D>(&distr, 100_000);
-    }
+    use crate::distribution::distribution_1d_tests;
+    distribution_1d_tests!(crate::alias::Alias1D);
 }
 

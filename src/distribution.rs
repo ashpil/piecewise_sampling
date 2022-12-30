@@ -47,3 +47,67 @@ pub trait Distribution2D {
     }
 }
 
+#[cfg(test)]
+use {
+    rand::{rngs::StdRng, Rng, SeedableRng},
+    statrs::distribution::{ChiSquared, ContinuousCDF},
+};
+
+#[cfg(test)]
+pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: usize) {
+    let dist = D::build(expected);
+    let mut observed = vec![0.0f32; expected.len()].into_boxed_slice();
+    let mut hist = vec![0u32; expected.len()].into_boxed_slice();
+    let mut rng = StdRng::seed_from_u64(0);
+
+    for _ in 0..sample_count {
+        let (pdf, idx) = dist.sample(rng.gen());
+        assert!((expected[idx] - pdf).abs() < 0.001);
+        assert_eq!(pdf, dist.pdf(idx));
+        hist[idx] += 1;
+    }
+
+    for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
+        *obs = (*weight as f32 / sample_count as f32) * dist.integral();
+    }
+
+    let mut chsq = 0.0;
+    for (obs, exp) in observed.into_iter().zip(expected) {
+        let diff = obs - exp;
+        chsq += diff * diff / exp;
+    }
+
+    let pval = 1.0 - ChiSquared::new((expected.len() - 1) as f64).unwrap().cdf(chsq as f64);
+    assert!(pval >= 0.99, "failed chi-squared statistical test, p = {}", pval);
+}
+
+#[cfg(test)]
+macro_rules! distribution_1d_tests {
+    ($impl:path) => {
+        mod distribution {
+            use crate::distribution::chisq_distribution_1d;
+
+            #[test]
+            fn basic1d() {
+                chisq_distribution_1d::<$impl>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+            }
+
+            #[test]
+            fn uniform1d() {
+                chisq_distribution_1d::<$impl>(&[1.0; 10_000], 1_000_000);
+            }
+
+            #[test]
+            fn increasing1d() {
+                let mut distr = [0.0; 100];
+                for (i, weight) in distr.iter_mut().enumerate() {
+                    *weight = (5 * (i + 1)) as f32;
+                }
+                chisq_distribution_1d::<$impl>(&distr, 100_000);
+            }
+        }
+    }
+}
+#[cfg(test)]
+pub(crate) use distribution_1d_tests;
+
