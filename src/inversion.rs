@@ -37,6 +37,13 @@ impl Distribution1D for Inversion1D {
         (pdf, (offset as f32 + du) / self.size() as f32)
     }
 
+    fn inverse_continuous(&self, u: f32) -> f32 {
+        let scaled = self.size() as f32 * u;
+        let idx = scaled as usize;
+        let delta = scaled - idx as f32;
+        (1.0 - delta) * self.cdf[idx] + delta * self.cdf[idx + 1]
+    }
+
     fn pdf(&self, u: usize) -> f32 {
         (self.cdf[u + 1] - self.cdf[u]) * self.weight_sum
     }

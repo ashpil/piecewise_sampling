@@ -104,6 +104,11 @@ impl Distribution1D for Alias1D {
         (entry.pdf, (index as f32 + du) / self.entries.len() as f32)
     }
 
+    fn inverse_continuous(&self, u: f32) -> f32 {
+        _ = u;
+        todo!()
+    }
+
     fn pdf(&self, u: usize) -> f32 {
         self.entries[u].pdf
     }

@@ -12,6 +12,9 @@ pub trait Distribution1D {
     // takes in rand [0-1), returns (pdf, sampled [0-1))
     fn sample_continuous(&self, u: f32) -> (f32, f32);
 
+    // inverse of above
+    fn inverse_continuous(&self, u: f32) -> f32;
+
     // takes in coord, returns pdf
     fn pdf(&self, u: usize) -> f32;
 
@@ -86,12 +89,25 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: 
 }
 
 #[cfg(test)]
+pub fn test_inv_1d<D: Distribution1D>(weights: &[f32], sample_count: usize) {
+    let dist = D::build(&weights);
+
+    for i in 0..sample_count {
+        let x = i as f32 / sample_count as f32;
+        let (_, y) = dist.sample_continuous(x);
+        let inv = dist.inverse_continuous(y);
+        assert!((inv - x).abs() < 0.0001);
+    }
+}
+
+#[cfg(test)]
 macro_rules! distribution_1d_tests {
     ($impl:path) => {
         mod distribution1d {
             use crate::distribution::{
                 Distribution1D,
                 chisq_distribution_1d,
+                test_inv_1d,
             };
             use $impl as Dist;
 
@@ -137,6 +153,25 @@ macro_rules! distribution_1d_tests {
                 let min = values.first().unwrap();
                 assert!((1.0 - max).abs() < 0.01);
                 assert!((0.0 - min).abs() < 0.01);
+            }
+
+            #[test]
+            fn inverse_uniform() {
+                test_inv_1d::<Dist>(&[1.0; 1_000], 1000);
+            }
+
+            #[test]
+            fn inverse_basic() {
+                test_inv_1d::<Dist>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+            }
+
+            #[test]
+            fn inverse_increasing() {
+                let mut distr = [0.0; 100];
+                for (i, weight) in distr.iter_mut().enumerate() {
+                    *weight = (5 * (i + 1)) as f32;
+                }
+                test_inv_1d::<Dist>(&distr, 1000);
             }
         }
     }
