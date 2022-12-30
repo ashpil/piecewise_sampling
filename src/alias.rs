@@ -96,9 +96,9 @@ impl Distribution1D for Alias1D {
         let mut du = v / entry.select;
 
         if entry.select < v {
+            du = (v - entry.select) / (1.0 - entry.select);
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
-            du = v / (1.0 - entry.select);
         }
 
         (entry.pdf, (index as f32 + du) / self.entries.len() as f32)

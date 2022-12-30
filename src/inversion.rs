@@ -34,7 +34,7 @@ impl Distribution1D for Inversion1D {
     fn sample_continuous(&self, u: f32) -> (f32, f32) {
         let (pdf, offset) = self.sample_discrete(u);
         let du = (u - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
-        (pdf, (offset as f32 + du) / self.cdf.len() as f32)
+        (pdf, (offset as f32 + du) / self.size() as f32)
     }
 
     fn pdf(&self, u: usize) -> f32 {
@@ -46,7 +46,7 @@ impl Distribution1D for Inversion1D {
     }
 
     fn size(&self) -> usize {
-        self.cdf.len()
+        self.cdf.len() - 1
     }
 }
 
