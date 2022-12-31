@@ -156,6 +156,26 @@ macro_rules! distribution_1d_tests {
             }
 
             #[test]
+            fn injective() {
+                let dist = Dist::build(&[1.0, 3.0]);
+                let sample_count = 1000;
+                let mut values = Vec::with_capacity(sample_count);
+                for i in 0..sample_count {
+                    let (_, x) = dist.sample_continuous(i as f32 / sample_count as f32);
+                    values.push(x);
+                }
+                values.sort_floats();
+                {
+                    let mut last = *values.first().unwrap();
+                    for i in 1..sample_count {
+                        let current = values[i];
+                        assert_ne!(last, current);
+                        last = current;
+                    }
+                }
+            }
+
+            #[test]
             fn inverse_uniform() {
                 test_inv_1d::<Dist>(&[1.0; 1_000], 1000);
             }
