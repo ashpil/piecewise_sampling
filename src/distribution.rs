@@ -101,6 +101,18 @@ pub fn test_inv_1d<D: Distribution1D>(weights: &[f32], sample_count: usize) {
 }
 
 #[cfg(test)]
+pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[f32], sample_count: usize) {
+    let dist = D::build(&weights);
+
+    for i in 0..sample_count {
+        let input = i as f32 / sample_count as f32;
+        let (_, output_discrete) = dist.sample(input);
+        let (_, output_continuous) = dist.sample_continuous(input);
+        assert_eq!((output_continuous * dist.size() as f32).round() as usize, output_discrete);
+    }
+}
+
+#[cfg(test)]
 macro_rules! distribution_1d_tests {
     ($impl:path) => {
         mod distribution1d {
@@ -108,6 +120,7 @@ macro_rules! distribution_1d_tests {
                 Distribution1D,
                 chisq_distribution_1d,
                 test_inv_1d,
+                test_continuous_discrete_matching_1d,
             };
             use $impl as Dist;
 
@@ -192,6 +205,11 @@ macro_rules! distribution_1d_tests {
                     *weight = (5 * (i + 1)) as f32;
                 }
                 test_inv_1d::<Dist>(&distr, 1000);
+            }
+
+            #[test]
+            fn continuous_discrete_matching_uniform() {
+                test_continuous_discrete_matching_1d::<Dist>(&[1.0; 1_000], 1000);
             }
         }
     }
