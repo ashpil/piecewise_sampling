@@ -45,6 +45,27 @@ pub trait Distribution2D {
             }
         }
     }
+
+    // fills demo image with sample_count samples
+    fn visualize_warping(&self) -> Data2D<f32> {
+        let downscale = 4;
+        let mut out = Data2D::new_same(self.width() / downscale, self.height() / downscale, 0.5);
+        let samples = 1_000;
+        let factor_y = samples / 10;
+        let factor_x = samples / 10;
+        for j in 0..samples {
+            for i in 0..samples {
+                let (_, [x, y]) = self.sample([i as f32 / samples as f32, j as f32 / samples as f32]);
+                let modulo_y = j % factor_y;
+                let modulo_x = i % factor_x;
+                let color = if ((modulo_y < factor_y / 2) && (modulo_x < factor_x / 2)) ||
+                                ((modulo_y > factor_y / 2) && (modulo_x > factor_x / 2))
+                    { 0.0 } else { 1.0 };
+                out[y / downscale][x / downscale] = color;
+            }
+        }
+        out
+    }
 }
 
 #[cfg(test)]

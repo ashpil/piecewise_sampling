@@ -62,10 +62,17 @@ fn main() {
         sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for inversion method sampling", sampling_start.elapsed().as_secs_f32());
 
+        //let warp = sampler.visualize_warping();
+
         write_rgb_file("inversion_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
             (p[0], p[1], p[2])
         }).unwrap();
+
+        //write_rgb_file("inversion_warping.exr", warp.width(), warp.height(), |x, y| {
+        //    let p = warp[y][x];
+        //    (p, p, p)
+        //}).unwrap();
     }
 
     {
@@ -78,9 +85,16 @@ fn main() {
         sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
         println!("Took {} seconds for alias method sampling", start.elapsed().as_secs_f32());
 
+        let warp = sampler.visualize_warping();
+
         write_rgb_file("alias_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
             (p[0], p[1], p[2])
+        }).unwrap();
+
+        write_rgb_file("alias_warping.exr", warp.width(), warp.height(), |x, y| {
+            let p = warp[y][x];
+            (p, p, p)
         }).unwrap();
     }
 
