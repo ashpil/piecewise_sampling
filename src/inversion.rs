@@ -6,6 +6,8 @@ pub struct Inversion1D {
 }
 
 impl Distribution1D for Inversion1D {
+    type Weight = f32;
+
     fn build(weights: &[f32]) -> Self {
         let mut cdf = vec![0.0; weights.len() + 1].into_boxed_slice();
 

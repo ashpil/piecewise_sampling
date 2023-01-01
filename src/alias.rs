@@ -14,6 +14,8 @@ pub struct Alias1D {
 }
 
 impl Distribution1D for Alias1D {
+    type Weight = f32;
+
     // Vose O(n)
     fn build(weights: &[f32]) -> Self {
         let n = weights.len();

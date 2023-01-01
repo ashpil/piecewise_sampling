@@ -1,25 +1,32 @@
 use crate::data2d::Data2D;
+use num_traits::real::Real;
+use num_traits::Zero;
+use num_traits::ToPrimitive;
+use num_traits::AsPrimitive;
+use num_traits::FromPrimitive;
 
 // 1D piecewise constant distribution
 // unless otherwise mentioned, sampling functions are discrete
 pub trait Distribution1D {
+    type Weight: Real + FromPrimitive;
+
     // constructor
-    fn build(weights: &[f32]) -> Self;
+    fn build(weights: &[Self::Weight]) -> Self;
 
     // takes in rand [0-1), returns (pdf, sampled idx)
-    fn sample(&self, u: f32) -> (f32, usize);
+    fn sample(&self, u: Self::Weight) -> (Self::Weight, usize);
 
     // takes in rand [0-1), returns (pdf, sampled [0-1))
-    fn sample_continuous(&self, u: f32) -> (f32, f32);
+    fn sample_continuous(&self, u: Self::Weight) -> (Self::Weight, Self::Weight);
 
     // inverse of above
-    fn inverse_continuous(&self, u: f32) -> f32;
+    fn inverse_continuous(&self, u: Self::Weight) -> Self::Weight;
 
     // takes in coord, returns pdf
-    fn pdf(&self, u: usize) -> f32;
+    fn pdf(&self, u: usize) -> Self::Weight;
 
     // sum of all weights
-    fn integral(&self) -> f32;
+    fn integral(&self) -> Self::Weight;
 
     // range of sampled idxs, should be len of weights
     fn size(&self) -> usize;
@@ -61,54 +68,55 @@ use {
 };
 
 #[cfg(test)]
-pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[f32], sample_count: usize) {
+pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_count: usize) where rand::distributions::Standard: rand::distributions::Distribution<<D as Distribution1D>::Weight>, <D as Distribution1D>::Weight: std::fmt::Debug   {
     let dist = D::build(expected);
-    let mut observed = vec![0.0f32; expected.len()].into_boxed_slice();
+    let mut observed = vec![D::Weight::zero(); expected.len()].into_boxed_slice();
     let mut hist = vec![0u32; expected.len()].into_boxed_slice();
     let mut rng = StdRng::seed_from_u64(0);
 
     for _ in 0..sample_count {
         let (pdf, idx) = dist.sample(rng.gen());
-        assert!((expected[idx] - pdf).abs() < 0.001);
+        assert!((expected[idx] - pdf).abs() < D::Weight::from_f64(0.001).unwrap());
         assert_eq!(pdf, dist.pdf(idx));
         hist[idx] += 1;
     }
 
     for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
-        *obs = (*weight as f32 / sample_count as f32) * dist.integral();
+        *obs = (D::Weight::from_u32(*weight).unwrap() / D::Weight::from_usize(sample_count).unwrap()) * dist.integral();
     }
 
     let mut chsq = 0.0;
-    for (obs, exp) in observed.into_iter().zip(expected) {
-        let diff = obs - exp;
-        chsq += diff * diff / exp;
+    let dof = expected.len() - 1;
+    for (obs, exp) in observed.into_iter().zip(expected.into_iter()) {
+        let diff = *obs - *exp;
+        chsq += (diff * diff / *exp).to_f64().unwrap();
     }
 
-    let pval = 1.0 - ChiSquared::new((expected.len() - 1) as f64).unwrap().cdf(chsq as f64);
+    let pval = 1.0 - ChiSquared::new(dof as f64).unwrap().cdf(chsq as f64);
     assert!(pval >= 0.99, "failed chi-squared statistical test, p = {}", pval);
 }
 
 #[cfg(test)]
-pub fn test_inv_1d<D: Distribution1D>(weights: &[f32], sample_count: usize) {
+pub fn test_inv_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize) {
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let x = i as f32 / sample_count as f32;
+        let x = D::Weight::from_usize(i).unwrap() / D::Weight::from_usize(sample_count).unwrap();
         let (_, y) = dist.sample_continuous(x);
         let inv = dist.inverse_continuous(y);
-        assert!((inv - x).abs() < 0.0001);
+        assert!((inv - x).abs() < D::Weight::from_f64(0.0001).unwrap());
     }
 }
 
 #[cfg(test)]
-pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[f32], sample_count: usize) {
+pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize) {
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let input = i as f32 / sample_count as f32;
+        let input = D::Weight::from_usize(i).unwrap() / D::Weight::from_usize(sample_count).unwrap();
         let (_, output_discrete) = dist.sample(input);
         let (_, output_continuous) = dist.sample_continuous(input);
-        assert_eq!((output_continuous * dist.size() as f32).round() as usize, output_discrete);
+        assert_eq!((output_continuous * D::Weight::from_usize(dist.size()).unwrap()).to_usize().unwrap(), output_discrete);
     }
 }
 
