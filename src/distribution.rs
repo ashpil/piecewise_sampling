@@ -2,7 +2,7 @@ use crate::data2d::Data2D;
 use num_traits::real::Real;
 
 // 1D piecewise constant distribution
-// unless otherwise mentioned, sampling functions are discrete
+// sampling functions are discrete
 pub trait Distribution1D {
     type Weight: Real;
 
@@ -12,12 +12,6 @@ pub trait Distribution1D {
     // takes in rand [0-1), returns (pdf, sampled idx)
     fn sample(&self, u: Self::Weight) -> (Self::Weight, usize);
 
-    // takes in rand [0-1), returns (pdf, sampled [0-1))
-    fn sample_continuous(&self, u: Self::Weight) -> (Self::Weight, Self::Weight);
-
-    // inverse of above
-    fn inverse_continuous(&self, u: Self::Weight) -> Self::Weight;
-
     // takes in coord, returns pdf
     fn pdf(&self, u: usize) -> Self::Weight;
 
@@ -26,6 +20,14 @@ pub trait Distribution1D {
 
     // range of sampled idxs, should be len of weights
     fn size(&self) -> usize;
+}
+
+pub trait ContinuousDistribution1D: Distribution1D {
+    // takes in rand [0-1), returns (pdf, sampled [0-1))
+    fn sample_continuous(&self, u: Self::Weight) -> (Self::Weight, Self::Weight);
+
+    // inverse of above
+    fn inverse_continuous(&self, u: Self::Weight) -> Self::Weight;
 }
 
 // 2D piecewise constant distribution
@@ -100,7 +102,7 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 }
 
 #[cfg(test)]
-pub fn test_inv_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize)
+pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
     where D::Weight: 'static,
         f64: AsPrimitive<D::Weight>,
         usize: AsPrimitive<D::Weight>,
@@ -116,7 +118,7 @@ pub fn test_inv_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize
 }
 
 #[cfg(test)]
-pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize)
+pub fn test_continuous_discrete_matching_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
     where D::Weight: AsPrimitive<usize>,
         usize: AsPrimitive<D::Weight>,
 {
@@ -133,13 +135,8 @@ pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[D::Wei
 #[cfg(test)]
 macro_rules! distribution_1d_tests {
     ($impl:path) => {
-        mod distribution1d {
-            use crate::distribution::{
-                Distribution1D,
-                chisq_distribution_1d,
-                test_inv_1d,
-                test_continuous_discrete_matching_1d,
-            };
+        mod distribution_1d {
+            use crate::distribution::chisq_distribution_1d;
             use $impl as Dist;
 
             #[test]
@@ -160,6 +157,23 @@ macro_rules! distribution_1d_tests {
                 }
                 chisq_distribution_1d::<Dist<f32>>(&distr, 100_000);
             }
+        }
+    }
+}
+#[cfg(test)]
+pub(crate) use distribution_1d_tests;
+
+#[cfg(test)]
+macro_rules! continuous_distribution_1d_tests {
+    ($impl:path) => {
+        mod continuous_distribution_1d {
+            use crate::distribution::{
+                Distribution1D,
+                ContinuousDistribution1D,
+                test_inv_1d,
+                test_continuous_discrete_matching_1d,
+            };
+            use $impl as Dist;
 
             #[test]
             fn surjective() {
@@ -233,5 +247,4 @@ macro_rules! distribution_1d_tests {
     }
 }
 #[cfg(test)]
-pub(crate) use distribution_1d_tests;
-
+pub(crate) use continuous_distribution_1d_tests;

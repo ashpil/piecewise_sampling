@@ -97,27 +97,6 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Alias1D<R>
         (entry.pdf, index)
     }
 
-    fn sample_continuous(&self, u: R) -> (R, R) {
-        let scaled: R = self.entries.len().as_() * u;
-        let mut index: usize = scaled.as_();
-        let mut entry = self.entries[index];
-        let v = scaled - index.as_();
-        let mut du = v / entry.select;
-
-        if entry.select < v {
-            du = (v - entry.select) / (R::one() - entry.select);
-            index = entry.alias as usize;
-            entry = self.entries[entry.alias as usize];
-        }
-
-        (entry.pdf, (index.as_() + du) / self.entries.len().as_())
-    }
-
-    fn inverse_continuous(&self, u: R) -> R {
-        _ = u;
-        todo!()
-    }
-
     fn pdf(&self, u: usize) -> R {
         self.entries[u].pdf
     }
