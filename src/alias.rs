@@ -1,43 +1,49 @@
 use crate::distribution::Distribution1D;
 use crate::utils;
+use num_traits::real::Real;
+use num_traits::AsPrimitive;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Entry {
-    pdf: f32,
-    select: f32,
+pub struct Entry<R: Real> {
+    pdf: R,
+    select: R,
     alias: u32,
 }
 
-pub struct Alias1D {
-    pub weight_sum: f32,
-    pub entries: Box<[Entry]>,
+pub struct Alias1D<R: Real> {
+    pub weight_sum: R,
+    pub entries: Box<[Entry<R>]>,
 }
 
-impl Distribution1D for Alias1D {
-    type Weight = f32;
+impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Alias1D<R>
+    where usize: AsPrimitive<R>,
+{
+    type Weight = R;
 
     // Vose O(n)
-    fn build(weights: &[f32]) -> Self {
+    fn build(weights: &[R]) -> Self {
         let n = weights.len();
 
         // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
         // will give us numbers rounded to nearest float, which might be the next integer over, not
         // the actual one
         // would be nice if rust supported other float rounding modes...
+        // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = vec![Entry { pdf: 0.0, select: 0.0, alias: 0 }; n].into_boxed_slice();
+        let mut entries = vec![Entry { pdf: R::zero(), select: R::zero(), alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
 
+        // this may not be necessary if not f32, TODO: conditionally disable
         let weight_sum = utils::kahan_sum(weights.iter().cloned());
 
         for (i, weight) in weights.iter().enumerate() {
-            let adjusted_weight = (weight * n as f32) / weight_sum;
+            let adjusted_weight = (*weight * n.as_()) / weight_sum;
             entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
-            if adjusted_weight < 1.0 {
+            if adjusted_weight < R::one() {
                 small.push(i as u32);
             } else {
                 large.push(i as u32);
@@ -49,9 +55,9 @@ impl Distribution1D for Alias1D {
             let g = large.pop().unwrap();
 
             entries[l as usize].alias = g;
-            entries[g as usize].select = (entries[g as usize].select + entries[l as usize].select) - 1.0;
+            entries[g as usize].select = (entries[g as usize].select + entries[l as usize].select) - R::one();
 
-            if entries[g as usize].select < 1.0 {
+            if entries[g as usize].select < R::one() {
                 small.push(g);
             } else {
                 large.push(g);
@@ -60,15 +66,16 @@ impl Distribution1D for Alias1D {
 
         // the select for entries in `large` should already all be >= 1.0, so 
         // we don't need to update them here
-        //
-        //while let Some(g) = large.pop() {
-        //    entries[g as usize].select = 1.0;
-        //}
+        // but we use division by select in our continuous sampling methods, so we
+        // still need to make sure it's exactly one
+        while let Some(g) = large.pop() {
+            entries[g as usize].select = R::one();
+        }
 
         // these are actually large but are in small due to float error
         // should be slightly less than 1.0, we need to make sure they're 1.0
         while let Some(l) = small.pop() {
-            entries[l as usize].select = 1.0;
+            entries[l as usize].select = R::one();
         }
 
         Self {
@@ -77,11 +84,11 @@ impl Distribution1D for Alias1D {
         }
     }
 
-    fn sample(&self, u: f32) -> (f32, usize) {
-        let scaled: f32 = (self.entries.len() as f32) * u;
-        let mut index = scaled as usize;
+    fn sample(&self, u: R) -> (R, usize) {
+        let scaled: R = self.entries.len().as_() * u;
+        let mut index: usize = scaled.as_();
         let mut entry = self.entries[index];
-        let v = scaled - index as f32;
+        let v = scaled - index.as_();
         if entry.select < v {
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
@@ -90,32 +97,32 @@ impl Distribution1D for Alias1D {
         (entry.pdf, index)
     }
 
-    fn sample_continuous(&self, u: f32) -> (f32, f32) {
-        let scaled: f32 = (self.entries.len() as f32) * u;
-        let mut index = scaled as usize;
+    fn sample_continuous(&self, u: R) -> (R, R) {
+        let scaled: R = self.entries.len().as_() * u;
+        let mut index: usize = scaled.as_();
         let mut entry = self.entries[index];
-        let v = scaled - index as f32;
+        let v = scaled - index.as_();
         let mut du = v / entry.select;
 
         if entry.select < v {
-            du = (v - entry.select) / (1.0 - entry.select);
+            du = (v - entry.select) / (R::one() - entry.select);
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
         }
 
-        (entry.pdf, (index as f32 + du) / self.entries.len() as f32)
+        (entry.pdf, (index.as_() + du) / self.entries.len().as_())
     }
 
-    fn inverse_continuous(&self, u: f32) -> f32 {
+    fn inverse_continuous(&self, u: R) -> R {
         _ = u;
         todo!()
     }
 
-    fn pdf(&self, u: usize) -> f32 {
+    fn pdf(&self, u: usize) -> R {
         self.entries[u].pdf
     }
 
-    fn integral(&self) -> f32 {
+    fn integral(&self) -> R {
         self.weight_sum
     }
 

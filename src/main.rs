@@ -54,7 +54,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Adapter2D::<Inversion1D>::build(&density_image);
+        let sampler = Adapter2D::<Inversion1D<f32>>::build(&density_image);
         println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -70,7 +70,7 @@ fn main() {
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Adapter2D::<Alias1D>::build(&density_image);
+        let sampler = Adapter2D::<Alias1D<f32>>::build(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();

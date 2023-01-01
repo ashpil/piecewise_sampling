@@ -1,14 +1,10 @@
 use crate::data2d::Data2D;
 use num_traits::real::Real;
-use num_traits::Zero;
-use num_traits::ToPrimitive;
-use num_traits::AsPrimitive;
-use num_traits::FromPrimitive;
 
 // 1D piecewise constant distribution
 // unless otherwise mentioned, sampling functions are discrete
 pub trait Distribution1D {
-    type Weight: Real + FromPrimitive;
+    type Weight: Real;
 
     // constructor
     fn build(weights: &[Self::Weight]) -> Self;
@@ -65,10 +61,17 @@ pub trait Distribution2D {
 use {
     rand::{rngs::StdRng, Rng, SeedableRng},
     statrs::distribution::{ChiSquared, ContinuousCDF},
+    num_traits::{Zero, AsPrimitive},
 };
 
 #[cfg(test)]
-pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_count: usize) where rand::distributions::Standard: rand::distributions::Distribution<<D as Distribution1D>::Weight>, <D as Distribution1D>::Weight: std::fmt::Debug   {
+pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_count: usize)
+    where rand::distributions::Standard: rand::distributions::Distribution<D::Weight>,
+        D::Weight: std::fmt::Debug + AsPrimitive<f64>,
+        u32: AsPrimitive<D::Weight>,
+        f64: AsPrimitive<D::Weight>,
+        usize: AsPrimitive<D::Weight>,
+{
     let dist = D::build(expected);
     let mut observed = vec![D::Weight::zero(); expected.len()].into_boxed_slice();
     let mut hist = vec![0u32; expected.len()].into_boxed_slice();
@@ -76,20 +79,20 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 
     for _ in 0..sample_count {
         let (pdf, idx) = dist.sample(rng.gen());
-        assert!((expected[idx] - pdf).abs() < D::Weight::from_f64(0.001).unwrap());
+        assert!((expected[idx] - pdf).abs() < 0.001.as_());
         assert_eq!(pdf, dist.pdf(idx));
         hist[idx] += 1;
     }
 
     for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
-        *obs = (D::Weight::from_u32(*weight).unwrap() / D::Weight::from_usize(sample_count).unwrap()) * dist.integral();
+        *obs = (weight.as_() / sample_count.as_()) * dist.integral();
     }
 
     let mut chsq = 0.0;
     let dof = expected.len() - 1;
     for (obs, exp) in observed.into_iter().zip(expected.into_iter()) {
         let diff = *obs - *exp;
-        chsq += (diff * diff / *exp).to_f64().unwrap();
+        chsq += (diff * diff / *exp).as_();
     }
 
     let pval = 1.0 - ChiSquared::new(dof as f64).unwrap().cdf(chsq as f64);
@@ -97,26 +100,33 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 }
 
 #[cfg(test)]
-pub fn test_inv_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize) {
+pub fn test_inv_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize)
+    where D::Weight: 'static,
+        f64: AsPrimitive<D::Weight>,
+        usize: AsPrimitive<D::Weight>,
+{
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let x = D::Weight::from_usize(i).unwrap() / D::Weight::from_usize(sample_count).unwrap();
+        let x = i.as_() / sample_count.as_();
         let (_, y) = dist.sample_continuous(x);
         let inv = dist.inverse_continuous(y);
-        assert!((inv - x).abs() < D::Weight::from_f64(0.0001).unwrap());
+        assert!((inv - x).abs() < 0.0001.as_());
     }
 }
 
 #[cfg(test)]
-pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize) {
+pub fn test_continuous_discrete_matching_1d<D: Distribution1D>(weights: &[D::Weight], sample_count: usize)
+    where D::Weight: AsPrimitive<usize>,
+        usize: AsPrimitive<D::Weight>,
+{
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let input = D::Weight::from_usize(i).unwrap() / D::Weight::from_usize(sample_count).unwrap();
+        let input = i.as_() / sample_count.as_();
         let (_, output_discrete) = dist.sample(input);
         let (_, output_continuous) = dist.sample_continuous(input);
-        assert_eq!((output_continuous * D::Weight::from_usize(dist.size()).unwrap()).to_usize().unwrap(), output_discrete);
+        assert_eq!((output_continuous * dist.size().as_()).as_(), output_discrete);
     }
 }
 
@@ -134,12 +144,12 @@ macro_rules! distribution_1d_tests {
 
             #[test]
             fn basic() {
-                chisq_distribution_1d::<Dist>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+                chisq_distribution_1d::<Dist<f32>>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
             }
 
             #[test]
             fn uniform() {
-                chisq_distribution_1d::<Dist>(&[1.0; 10_000], 1_000_000);
+                chisq_distribution_1d::<Dist<f32>>(&[1.0; 10_000], 1_000_000);
             }
 
             #[test]
@@ -148,12 +158,12 @@ macro_rules! distribution_1d_tests {
                 for (i, weight) in distr.iter_mut().enumerate() {
                     *weight = (5 * (i + 1)) as f32;
                 }
-                chisq_distribution_1d::<Dist>(&distr, 100_000);
+                chisq_distribution_1d::<Dist<f32>>(&distr, 100_000);
             }
 
             #[test]
             fn surjective() {
-                let dist = Dist::build(&[1.0; 1_000]);
+                let dist = Dist::<f32>::build(&[1.0; 1_000]);
                 let sample_count = 1000;
                 let mut values = Vec::with_capacity(sample_count);
                 for i in 0..sample_count {
@@ -178,7 +188,7 @@ macro_rules! distribution_1d_tests {
 
             #[test]
             fn injective() {
-                let dist = Dist::build(&[1.0, 3.0]);
+                let dist = Dist::<f32>::build(&[1.0, 3.0]);
                 let sample_count = 1000;
                 let mut values = Vec::with_capacity(sample_count);
                 for i in 0..sample_count {
@@ -198,12 +208,12 @@ macro_rules! distribution_1d_tests {
 
             #[test]
             fn inverse_uniform() {
-                test_inv_1d::<Dist>(&[1.0; 1_000], 1000);
+                test_inv_1d::<Dist<f32>>(&[1.0; 1_000], 1000);
             }
 
             #[test]
             fn inverse_basic() {
-                test_inv_1d::<Dist>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+                test_inv_1d::<Dist<f32>>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
             }
 
             #[test]
@@ -212,12 +222,12 @@ macro_rules! distribution_1d_tests {
                 for (i, weight) in distr.iter_mut().enumerate() {
                     *weight = (5 * (i + 1)) as f32;
                 }
-                test_inv_1d::<Dist>(&distr, 1000);
+                test_inv_1d::<Dist<f32>>(&distr, 1000);
             }
 
             #[test]
             fn continuous_discrete_matching_uniform() {
-                test_continuous_discrete_matching_1d::<Dist>(&[1.0; 1_000], 1000);
+                test_continuous_discrete_matching_1d::<Dist<f64>>(&[1.0; 1_000], 1000);
             }
         }
     }

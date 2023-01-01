@@ -1,8 +1,10 @@
-use num_traits::Float;
+use num_traits::real::Real;
 
-pub fn kahan_sum<F: Float>(input: impl IntoIterator<Item=F>) -> F {
-    let mut sum = F::zero();
-    let mut err = F::zero();
+// unlikely to be necessary if not float, but why not,
+// let it be used on arbitrary reals
+pub fn kahan_sum<R: Real>(input: impl IntoIterator<Item=R>) -> R {
+    let mut sum = R::zero();
+    let mut err = R::zero();
     for v in input {
         let y = v - err;
         let t = sum + y;
