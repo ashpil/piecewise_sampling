@@ -116,7 +116,8 @@ pub struct ContinuousEntry<R: Real> {
     pdf: R,
     select: R,
     alias: u32,
-    bounds: [R; 2], // bounds of alias if have alias, own bounds otherwise
+    own_region: [R; 2], // which region of own entry do we sample
+    alias_region: [R; 2], // which region of alias entry do we sample
 }
 
 pub struct ContinuousAlias1D<R: Real> {
@@ -139,7 +140,7 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
         // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = vec![ContinuousEntry { pdf: R::zero(), select: R::zero(), alias: 0, bounds: [R::zero(), R::one()] }; n].into_boxed_slice();
+        let mut entries = vec![ContinuousEntry { pdf: R::zero(), select: R::zero(), alias: 0, own_region: [R::zero(), R::one()], alias_region: [R::zero(), R::zero()] }; n].into_boxed_slice();
         let mut adjusted_weights = vec![R::zero(); n].into_boxed_slice();
 
         let mut small = Vec::new();
@@ -166,10 +167,10 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
             let more = large.pop().unwrap();
 
             entries[less as usize].alias = more;
-            let mut bounds = entries[more as usize].bounds;
-            bounds[0] = bounds[1] - (R::one() - entries[less as usize].select) / adjusted_weights[more as usize];
-            entries[less as usize].bounds = bounds;
-            entries[more as usize].bounds[1] = bounds[0];
+            let mut region = entries[more as usize].own_region;
+            region[0] = region[1] - (R::one() - entries[less as usize].select) / adjusted_weights[more as usize];
+            entries[less as usize].alias_region = region;
+            entries[more as usize].own_region[1] = region[0];
 
             // more numerically stable version of this
             // entries[more as usize].select -= (R::one() - entries[less as usize].select);
@@ -237,25 +238,21 @@ impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Contin
 
         let (pdf, index, du) = if initial_entry.select <= v {
             // selected alias of initial entry
+            let v_remapped = (v - initial_entry.select) / (R::one() - initial_entry.select);
 
             let pdf = self.entries[initial_entry.alias as usize].pdf;
 
-            let v_remapped = (v - initial_entry.select) / (R::one() - initial_entry.select);
-            let du = v_remapped * (initial_entry.bounds[1] - initial_entry.bounds[0]) + initial_entry.bounds[0];
+            let du = v_remapped * (initial_entry.alias_region[1] - initial_entry.alias_region[0]) + initial_entry.alias_region[0];
             let index = initial_entry.alias as usize;
             (pdf, index, du)
         } else {
             // selected initial entry
+            let v_remapped = v / initial_entry.select;
 
             let pdf = initial_entry.pdf;
 
             let index = initial_index;
-
-            let du = if self.entries[index].select == R::one() {
-                v * (initial_entry.bounds[1] - initial_entry.bounds[0])
-            } else {
-                v / initial_entry.select
-            };
+            let du = v_remapped * (initial_entry.own_region[1] - initial_entry.own_region[0]) + initial_entry.own_region[0];
 
             (pdf, index, du)
         };
@@ -272,7 +269,7 @@ impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Contin
 
         let du;
         if entry.select == R::one() {
-            if entry.bounds[1] == R::one() {
+            if entry.own_region[1] == R::one() {
                 du = v;
             } else {
                 todo!()
