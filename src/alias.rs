@@ -231,25 +231,57 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
 impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for ContinuousAlias1D<R> where usize: AsPrimitive<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
         let scaled: R = self.entries.len().as_() * u;
-        let mut index: usize = scaled.as_();
-        let mut entry = self.entries[index];
-        let v = scaled - index.as_();
-        let mut du = v / entry.select;
+        let initial_index: usize = scaled.as_();
+        let initial_entry = self.entries[initial_index];
+        let v = scaled - initial_index.as_();
 
-        if entry.select == R::one() {
-            du = v * (entry.bounds[1] - entry.bounds[0]);
-        } else if entry.select <= v {
-            let v_remapped = (v - entry.select) / (R::one() - entry.select);
-            du = v_remapped * (entry.bounds[1] - entry.bounds[0]) + entry.bounds[0];
-            index = entry.alias as usize;
-            entry = self.entries[entry.alias as usize];
-        }
+        let (pdf, index, du) = if initial_entry.select <= v {
+            // selected alias of initial entry
 
-        (entry.pdf, (index.as_() + du) / self.size().as_())
+            let pdf = self.entries[initial_entry.alias as usize].pdf;
+
+            let v_remapped = (v - initial_entry.select) / (R::one() - initial_entry.select);
+            let du = v_remapped * (initial_entry.bounds[1] - initial_entry.bounds[0]) + initial_entry.bounds[0];
+            let index = initial_entry.alias as usize;
+            (pdf, index, du)
+        } else {
+            // selected initial entry
+
+            let pdf = initial_entry.pdf;
+
+            let index = initial_index;
+
+            let du = if self.entries[index].select == R::one() {
+                v * (initial_entry.bounds[1] - initial_entry.bounds[0])
+            } else {
+                v / initial_entry.select
+            };
+
+            (pdf, index, du)
+        };
+
+
+        (pdf, (index.as_() + du) / self.size().as_())
     }
 
-    fn inverse_continuous(&self, _u: R) -> R {
-        todo!()
+    fn inverse_continuous(&self, u: R) -> R {
+        let scaled: R = self.entries.len().as_() * u;
+        let index: usize = scaled.as_();
+        let v = scaled - index.as_();
+        let entry = self.entries[index];
+
+        let du;
+        if entry.select == R::one() {
+            if entry.bounds[1] == R::one() {
+                du = v;
+            } else {
+                todo!()
+            }
+        } else {
+            du = v * entry.select;
+        }
+
+        (index.as_() + du) / self.size().as_()
     }
 }
 
