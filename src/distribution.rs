@@ -103,7 +103,7 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 
 #[cfg(test)]
 pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
-    where D::Weight: 'static,
+    where D::Weight: std::fmt::Display + 'static,
         f64: AsPrimitive<D::Weight>,
         usize: AsPrimitive<D::Weight>,
 {
@@ -113,7 +113,7 @@ pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_co
         let x = i.as_() / sample_count.as_();
         let (_, y) = dist.sample_continuous(x);
         let inv = dist.inverse_continuous(y);
-        assert!((inv - x).abs() < 0.0001.as_());
+        assert!((inv - x).abs() < 0.0001.as_(), "{} original not equal to {} inverse of sample {}", x, inv, y);
     }
 }
 
@@ -202,11 +202,11 @@ macro_rules! continuous_distribution_1d_tests {
 
             #[test]
             fn injective() {
-                let dist = Dist::<f32>::build(&[1.0, 3.0]);
+                let dist = Dist::<f64>::build(&[1.0, 1.0, 2.0, 4.0, 8.0]);
                 let sample_count = 1000;
                 let mut values = Vec::with_capacity(sample_count);
                 for i in 0..sample_count {
-                    let (_, x) = dist.sample_continuous(i as f32 / sample_count as f32);
+                    let (_, x) = dist.sample_continuous(i as f64 / sample_count as f64);
                     values.push(x);
                 }
                 values.sort_floats();
