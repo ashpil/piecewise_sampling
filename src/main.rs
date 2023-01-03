@@ -7,7 +7,6 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 use pdf_maker::data2d::Data2D;
-use pdf_maker::distribution::Distribution2D;
 use pdf_maker::distribution::ContinuousDistribution2D;
 use pdf_maker::inversion::Inversion1D;
 use pdf_maker::alias::ContinuousAlias1D;
@@ -53,51 +52,44 @@ fn main() {
         StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(sample_count * 2).array_chunks::<2>().collect()
     };
 
-    {
-        let preprocess_start = Instant::now();
-        let sampler = Adapter2D::<Inversion1D<f32>>::build(&density_image);
-        println!("Took {} seconds for inversion method preprocess", preprocess_start.elapsed().as_secs_f32());
+    fn demo_distribution<D: ContinuousDistribution2D<Weight=f32>>(name: &str, source_image: &Data2D<[f32; 3]>, weights: &Data2D<f32>, rands: &Vec<[f32; 2]>) {
 
-        let mut demo_image = source_image.clone();
-        let sampling_start = Instant::now();
-        sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
-        println!("Took {} seconds for inversion method sampling", sampling_start.elapsed().as_secs_f32());
+        println!("{} method", name);
 
-        write_rgb_file("inversion_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
-            let p = demo_image[y][x];
-            (p[0], p[1], p[2])
-        }).unwrap();
+        let sampler = {
+            let preprocess_start = Instant::now();
+            let sampler = D::build(weights);
+            println!("  {} seconds for build", preprocess_start.elapsed().as_secs_f32());
+            sampler
+        };
 
-        let warping = sampler.visualize_warping(16);
+        {
+            let mut demo_image = source_image.clone();
 
-        write_rgb_file("inversion_warping.exr", warping.width(), warping.height(), |x, y| {
-            let p = warping[y][x];
-            (p[0], p[1], p[2])
-        }).unwrap();
+            let sampling_start = Instant::now();
+            sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
+            println!("  {} seconds for sampling", sampling_start.elapsed().as_secs_f32());
+
+            write_rgb_file(format!("{}_demo.exr", name), demo_image.width(), demo_image.height(), |x, y| {
+                let p = demo_image[y][x];
+                (p[0], p[1], p[2])
+            }).unwrap();
+        }
+
+        {
+            let warping_start = Instant::now();
+            let warping = sampler.visualize_warping(16);
+            println!("  {} seconds for warping visualization", warping_start.elapsed().as_secs_f32());
+
+            write_rgb_file(format!("{}.exr", name), warping.width(), warping.height(), |x, y| {
+                let p = warping[y][x];
+                (p[0], p[1], p[2])
+            }).unwrap();
+        }
     }
 
-    {
-        let preprocess_start = Instant::now();
-        let sampler = Adapter2D::<ContinuousAlias1D<f32>>::build(&density_image);
-        println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
-
-        let mut demo_image = source_image.clone();
-        let start = Instant::now();
-        sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
-        println!("Took {} seconds for alias method sampling", start.elapsed().as_secs_f32());
-
-        write_rgb_file("alias_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
-            let p = demo_image[y][x];
-            (p[0], p[1], p[2])
-        }).unwrap();
-
-        let warping = sampler.visualize_warping(16);
-
-        write_rgb_file("alias_warping.exr", warping.width(), warping.height(), |x, y| {
-            let p = warping[y][x];
-            (p[0], p[1], p[2])
-        }).unwrap();
-    }
+    demo_distribution::<Adapter2D::<Inversion1D<f32>>>("Inversion", &source_image, &density_image, &rands);
+    demo_distribution::<Adapter2D::<ContinuousAlias1D<f32>>>("Alias", &source_image, &density_image, &rands);
 
     println!("Done!");
 }
