@@ -4,7 +4,6 @@ use crate::distribution::{
 };
 use crate::utils;
 use num_traits::real::Real;
-use num_traits::AsPrimitive;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Entry<R: Real> {
@@ -18,9 +17,7 @@ pub struct Alias1D<R: Real> {
     pub entries: Box<[Entry<R>]>,
 }
 
-impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Alias1D<R>
-    where usize: AsPrimitive<R>,
-{
+impl<R: Real> Distribution1D for Alias1D<R> {
     type Weight = R;
 
     // Vose O(n)
@@ -43,7 +40,7 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Alias1D<R>
         let weight_sum = utils::kahan_sum(weights.iter().cloned());
 
         for (i, weight) in weights.iter().enumerate() {
-            let adjusted_weight = (*weight * n.as_()) / weight_sum;
+            let adjusted_weight = (*weight * num_traits::cast(n).unwrap()) / weight_sum;
             entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
             if adjusted_weight < R::one() {
@@ -86,10 +83,10 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Alias1D<R>
     }
 
     fn sample(&self, u: R) -> (R, usize) {
-        let scaled: R = self.entries.len().as_() * u;
-        let mut index: usize = scaled.as_();
+        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
+        let mut index: usize = num_traits::cast(scaled).unwrap();
         let mut entry = self.entries[index];
-        let v = scaled - index.as_();
+        let v = scaled - num_traits::cast(index).unwrap();
         if entry.select <= v {
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
@@ -125,8 +122,7 @@ pub struct ContinuousAlias1D<R: Real> {
     pub entries: Box<[ContinuousEntry<R>]>,
 }
 
-impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1D<R>
-    where usize: AsPrimitive<R>,
+impl<R: Real> Distribution1D for ContinuousAlias1D<R>
 {
     type Weight = R;
 
@@ -150,7 +146,7 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
         let weight_sum = utils::kahan_sum(weights.iter().cloned());
 
         for (i, weight) in weights.iter().enumerate() {
-            let adjusted_weight = (*weight * n.as_()) / weight_sum;
+            let adjusted_weight = (*weight * num_traits::cast(n).unwrap()) / weight_sum;
             adjusted_weights[i] = adjusted_weight;
             entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
@@ -204,10 +200,10 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
     }
 
     fn sample(&self, u: R) -> (R, usize) {
-        let scaled: R = self.entries.len().as_() * u;
-        let mut index: usize = scaled.as_();
+        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
+        let mut index: usize = num_traits::cast(scaled).unwrap();
         let mut entry = self.entries[index];
-        let v = scaled - index.as_();
+        let v = scaled - num_traits::cast(index).unwrap();
         if entry.select <= v {
             index = entry.alias as usize;
             entry = self.entries[entry.alias as usize];
@@ -229,12 +225,12 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for ContinuousAlias1
     }
 }
 
-impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for ContinuousAlias1D<R> where usize: AsPrimitive<R> {
+impl<R: Real> ContinuousDistribution1D for ContinuousAlias1D<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
-        let scaled: R = self.entries.len().as_() * u;
-        let initial_index: usize = scaled.as_();
+        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
+        let initial_index: usize = num_traits::cast(scaled).unwrap();
         let initial_entry = self.entries[initial_index];
-        let v = scaled - initial_index.as_();
+        let v = scaled - num_traits::cast(initial_index).unwrap();
 
         let (pdf, index, du) = if initial_entry.select <= v {
             // selected alias of initial entry
@@ -258,15 +254,15 @@ impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Contin
         };
 
 
-        (pdf, (index.as_() + du) / self.size().as_())
+        (pdf, (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap())
     }
 
     // O(n) at worst
     fn inverse_continuous(&self, u: R) -> R {
-        let scaled: R = self.entries.len().as_() * u;
-        let initial_index: usize = scaled.as_();
-        let v = scaled - initial_index.as_();
+        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
+        let initial_index: usize = num_traits::cast(scaled).unwrap();
         let initial_entry = self.entries[initial_index];
+        let v = scaled - num_traits::cast(initial_index).unwrap();
 
         let (index, du) = if initial_entry.own_region[0] == R::zero() && initial_entry.own_region[1] == R::one() {
             (initial_index, v * initial_entry.select)
@@ -289,7 +285,7 @@ impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Contin
             }
         };
 
-        (index.as_() + du) / self.size().as_()
+        (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap()
     }
 }
 

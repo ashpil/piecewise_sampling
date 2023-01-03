@@ -4,7 +4,7 @@ use crate::distribution::{
 };
 use num_traits::{
     real::Real,
-    AsPrimitive,
+    cast,
 };
 
 pub struct Inversion1D<R: Real> {
@@ -12,7 +12,7 @@ pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
 }
 
-impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Inversion1D<R> where usize: AsPrimitive<R> {
+impl<R: Real> Distribution1D for Inversion1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
@@ -53,17 +53,17 @@ impl<R: Real + AsPrimitive<usize> + 'static> Distribution1D for Inversion1D<R> w
     }
 }
 
-impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Inversion1D<R> where usize: AsPrimitive<R> {
+impl<R: Real> ContinuousDistribution1D for Inversion1D<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
         let (pdf, offset) = self.sample(u);
         let du = (u - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
-        (pdf, (offset.as_() + du) / self.size().as_())
+        (pdf, (cast::<usize, R>(offset).unwrap() + du) / cast(self.size()).unwrap())
     }
 
     fn inverse_continuous(&self, u: R) -> R {
-        let scaled = self.size().as_() * u;
-        let idx: usize = scaled.as_();
-        let delta = scaled - idx.as_();
+        let scaled: R = cast::<usize, R>(self.size()).unwrap() * u;
+        let idx: usize = cast(scaled).unwrap();
+        let delta = scaled - cast(idx).unwrap();
         (R::one() - delta) * self.cdf[idx] + delta * self.cdf[idx + 1]
     }
 }
