@@ -1,4 +1,5 @@
 #![feature(sort_floats)]
+#![feature(int_roundings)]
 
 mod utils;
 
@@ -7,3 +8,4 @@ pub mod distribution;
 pub mod inversion;
 pub mod alias;
 pub mod adapter2d;
+pub mod hierarchical;
