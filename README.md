@@ -1,5 +1,9 @@
-# Importance sampling environment maps
+# Exploring piecewise distribution sampling methods
 
-This constructs the necessary tables and information for importance sampling from an environment map.
+Currently supporting:
+  * [Alias Method](https://www.keithschwarz.com/darts-dice-coins/)
+  * [CDF Inversion](https://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#x1-Example:Piecewise-Constant1DFunctions)
 
-It supports the two common methods - the alias method, as described in *Ray Tracing Gems II* Chapter 21, and the inversion method, as described [here](https://pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources#InfiniteAreaLights).
+Other references:
+  * [Visualizing Warping Strategies for Sampling Environment Map Lights](https://pharr.org/matt/blog/2019/06/05/visualizing-env-light-warpings), *Matt Pharr's blog*
+
