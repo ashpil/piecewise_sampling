@@ -261,22 +261,33 @@ impl<R: Real + AsPrimitive<usize> + 'static> ContinuousDistribution1D for Contin
         (pdf, (index.as_() + du) / self.size().as_())
     }
 
+    // O(n) at worst
     fn inverse_continuous(&self, u: R) -> R {
         let scaled: R = self.entries.len().as_() * u;
-        let index: usize = scaled.as_();
-        let v = scaled - index.as_();
-        let entry = self.entries[index];
+        let initial_index: usize = scaled.as_();
+        let v = scaled - initial_index.as_();
+        let initial_entry = self.entries[initial_index];
 
-        let du;
-        if entry.select == R::one() {
-            if entry.own_region[1] == R::one() {
-                du = v;
-            } else {
-                todo!()
-            }
+        let (index, du) = if initial_entry.own_region[0] == R::zero() && initial_entry.own_region[1] == R::one() {
+            (initial_index, v * initial_entry.select)
         } else {
-            du = v * entry.select;
-        }
+            if v <= initial_entry.own_region[1] {
+                (initial_index, (v / initial_entry.own_region[1]) * initial_entry.select)
+            } else {
+                let mut index = None;
+                let mut du = None;
+                for (entry_idx, entry) in self.entries.iter().enumerate() {
+                    if entry.alias == initial_index as u32 {
+                        if entry.alias_region[0] <= v && v <= entry.alias_region[1] {
+                            let v_remapped = (v - entry.alias_region[0]) / (entry.alias_region[1] - entry.alias_region[0]);
+                            index = Some(entry_idx);
+                            du = Some(v_remapped * (R::one() - entry.select) + entry.select);
+                        }
+                    }
+                }
+                (index.unwrap(), du.unwrap())
+            }
+        };
 
         (index.as_() + du) / self.size().as_()
     }
