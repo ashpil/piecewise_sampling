@@ -63,7 +63,7 @@ pub trait Distribution2D {
 use {
     rand::{rngs::StdRng, Rng, SeedableRng},
     statrs::distribution::{ChiSquared, ContinuousCDF},
-    num_traits::{Zero, AsPrimitive},
+    num_traits::{Zero, AsPrimitive, cast},
 };
 
 #[cfg(test)]
@@ -103,17 +103,15 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 
 #[cfg(test)]
 pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
-    where D::Weight: std::fmt::Display + 'static,
-        f64: AsPrimitive<D::Weight>,
-        usize: AsPrimitive<D::Weight>,
+    where D::Weight: std::fmt::Display,
 {
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let x = i.as_() / sample_count.as_();
+        let x = cast::<usize, D::Weight>(i).unwrap() / cast(sample_count).unwrap();
         let (_, y) = dist.sample_continuous(x);
         let inv = dist.inverse_continuous(y);
-        assert!((inv - x).abs() < 0.0001.as_(), "{} original not equal to {} inverse of sample {}", x, inv, y);
+        assert!((inv - x).abs() < cast(0.0001).unwrap(), "{} original not equal to {} inverse of sample {}", x, inv, y);
     }
 }
 
@@ -174,6 +172,8 @@ macro_rules! continuous_distribution_1d_tests {
                 test_continuous_discrete_matching_1d,
             };
             use $impl as Dist;
+            use num_bigfloat::BigFloat;
+            use num_traits::{Zero, FromPrimitive};
 
             #[test]
             fn surjective() {
@@ -232,11 +232,11 @@ macro_rules! continuous_distribution_1d_tests {
 
             #[test]
             fn inverse_increasing() {
-                let mut distr = [0.0; 100];
+                let mut distr = [BigFloat::zero(); 100];
                 for (i, weight) in distr.iter_mut().enumerate() {
-                    *weight = (5 * (i + 1)) as f64;
+                    *weight = BigFloat::from_usize(5 * (i + 1)).unwrap();
                 }
-                test_inv_1d::<Dist<f64>>(&distr, 1000);
+                test_inv_1d::<Dist<BigFloat>>(&distr, 1000);
             }
 
             #[test]

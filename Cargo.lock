@@ -437,6 +437,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigfloat"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da65fc937a04931ae5f0254d0ff5c1b8f1e520e914741493848cafdd386d1ac5"
+dependencies = [
+ "num-traits",
+ "rand",
+ "serde",
+]
+
+[[package]]
 name = "num-complex"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -510,6 +521,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "exr",
+ "num-bigfloat",
  "num-traits",
  "rand",
  "sobol_burley",
@@ -712,6 +724,9 @@ name = "serde"
 version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fed41fc1a24994d044e6db6935e69511a1153b52c15eb42493b26fa87feba0"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_cbor"
