@@ -71,6 +71,26 @@ pub trait ContinuousDistribution2D: Distribution2D {
 
     // inverse of above
     fn inverse_continuous(&self, uv: [Self::Weight; 2]) -> [Self::Weight; 2];
+
+    fn visualize_warping(&self, block_count: usize) -> Data2D<[f32; 3]>
+        where <Self as Distribution2D>::Weight: std::fmt::Display
+    {
+        let mut out = Data2D::new_same(self.width(), self.height(), [0.0, 0.0, 0.0]);
+        for j in 0..self.height() {
+            for i in 0..self.width() {
+                let input = [
+                    (cast::<usize, Self::Weight>(i).unwrap() + cast(0.5).unwrap()) / cast(self.width()).unwrap(),
+                    (cast::<usize, Self::Weight>(j).unwrap() + cast(0.5).unwrap()) / cast(self.height()).unwrap(),
+                ];
+                let [x, y] = self.inverse_continuous(input);
+                let x_scaled = cast::<Self::Weight, usize>(x * cast(block_count).unwrap()).unwrap();
+                let y_scaled = cast::<Self::Weight, usize>(y * cast(block_count).unwrap()).unwrap();
+                let tile = (x_scaled + block_count * y_scaled) as u64 + 1;
+                out[j][i] = crate::utils::u64_to_color(tile);
+            }
+        }
+        out
+    }
 }
 
 #[cfg(test)]

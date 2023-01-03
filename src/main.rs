@@ -8,8 +8,9 @@ use rand::{Rng, SeedableRng};
 
 use pdf_maker::data2d::Data2D;
 use pdf_maker::distribution::Distribution2D;
+use pdf_maker::distribution::ContinuousDistribution2D;
 use pdf_maker::inversion::Inversion1D;
-use pdf_maker::alias::Alias1D;
+use pdf_maker::alias::ContinuousAlias1D;
 use pdf_maker::adapter2d::Adapter2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
@@ -66,11 +67,18 @@ fn main() {
             let p = demo_image[y][x];
             (p[0], p[1], p[2])
         }).unwrap();
+
+        let warping = sampler.visualize_warping(16);
+
+        write_rgb_file("inversion_warping.exr", warping.width(), warping.height(), |x, y| {
+            let p = warping[y][x];
+            (p[0], p[1], p[2])
+        }).unwrap();
     }
 
     {
         let preprocess_start = Instant::now();
-        let sampler = Adapter2D::<Alias1D<f32>>::build(&density_image);
+        let sampler = Adapter2D::<ContinuousAlias1D<f32>>::build(&density_image);
         println!("Took {} seconds for alias method preprocess", preprocess_start.elapsed().as_secs_f32());
 
         let mut demo_image = source_image.clone();
@@ -80,6 +88,13 @@ fn main() {
 
         write_rgb_file("alias_demo.exr", demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
+            (p[0], p[1], p[2])
+        }).unwrap();
+
+        let warping = sampler.visualize_warping(16);
+
+        write_rgb_file("alias_warping.exr", warping.width(), warping.height(), |x, y| {
+            let p = warping[y][x];
             (p[0], p[1], p[2])
         }).unwrap();
     }
