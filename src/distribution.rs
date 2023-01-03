@@ -65,6 +65,14 @@ pub trait Distribution2D {
     }
 }
 
+pub trait ContinuousDistribution2D: Distribution2D {
+    // takes in rand [0-1), returns (pdf, sampled [0-1)x[0-1))
+    fn sample_continuous(&self, uv: [Self::Weight; 2]) -> (Self::Weight, [Self::Weight; 2]);
+
+    // inverse of above
+    fn inverse_continuous(&self, uv: [Self::Weight; 2]) -> [Self::Weight; 2];
+}
+
 #[cfg(test)]
 use {
     rand::{rngs::StdRng, Rng, SeedableRng},
