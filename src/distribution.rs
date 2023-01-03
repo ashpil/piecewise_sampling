@@ -103,7 +103,7 @@ use {
 #[cfg(test)]
 pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_count: usize)
     where rand::distributions::Standard: rand::distributions::Distribution<D::Weight>,
-        D::Weight: std::fmt::Debug + AsPrimitive<f64>,
+        D::Weight: std::fmt::Display + std::fmt::Debug + AsPrimitive<f64>,
         u32: AsPrimitive<D::Weight>,
         f64: AsPrimitive<D::Weight>,
         usize: AsPrimitive<D::Weight>,
@@ -115,8 +115,9 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 
     for _ in 0..sample_count {
         let (pdf, idx) = dist.sample(rng.gen());
-        assert!((expected[idx] - pdf).abs() < 0.001.as_());
-        assert_eq!(pdf, dist.pdf(idx));
+        assert!((expected[idx] - pdf).abs() < 0.001.as_(), "{} expected pdf not near generated {}", expected[idx], pdf);
+        let reconstructed_pdf = dist.pdf(idx);
+        assert!((pdf - reconstructed_pdf).abs() < 0.001.as_(), "{} generated pdf not near reconstructed {}", pdf, reconstructed_pdf);
         hist[idx] += 1;
     }
 
