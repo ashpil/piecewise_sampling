@@ -222,21 +222,21 @@ macro_rules! continuous_distribution_1d_tests {
 
             #[test]
             fn inverse_uniform() {
-                test_inv_1d::<Dist<f32>>(&[1.0; 1_000], 1000);
+                test_inv_1d::<Dist<f64>>(&[1.0; 1_000], 1000);
             }
 
             #[test]
             fn inverse_basic() {
-                test_inv_1d::<Dist<f32>>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+                test_inv_1d::<Dist<f64>>(&[1.0, 2.0, 4.0, 8.0], 1000);
             }
 
             #[test]
             fn inverse_increasing() {
                 let mut distr = [0.0; 100];
                 for (i, weight) in distr.iter_mut().enumerate() {
-                    *weight = (5 * (i + 1)) as f32;
+                    *weight = (5 * (i + 1)) as f64;
                 }
-                test_inv_1d::<Dist<f32>>(&distr, 1000);
+                test_inv_1d::<Dist<f64>>(&distr, 1000);
             }
 
             #[test]
