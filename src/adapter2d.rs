@@ -28,8 +28,8 @@ impl<D: Distribution1D> Distribution2D for Adapter2D<D> {
     }
 
     fn sample(&self, [u, v]: [D::Weight; 2]) -> (D::Weight, [usize; 2]) {
-        let (pdf_y, y) = self.marginal.sample(u);
-        let (pdf_x, x) = self.conditional[y].sample(v);
+        let (pdf_y, y) = self.marginal.sample(v);
+        let (pdf_x, x) = self.conditional[y].sample(u);
 
         (pdf_x * pdf_y, [x, y])
     }
