@@ -1,4 +1,8 @@
-use num_traits::real::Real;
+use num_traits::{
+    real::Real,
+    One,
+    NumOps,
+};
 
 // unlikely to be necessary if not float, but why not,
 // let it be used on arbitrary reals
@@ -41,5 +45,9 @@ pub fn u64_to_color(a: u64) -> [f32; 3] {
         radical_inverse(1, a),
         radical_inverse(2, a),
     ]
+}
+
+pub fn lerp<T: One + NumOps + Copy>(by: T, from: T, to: T) -> T {
+    (T::one() - by) * from + by * to 
 }
 

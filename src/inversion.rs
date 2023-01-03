@@ -64,7 +64,7 @@ impl<R: Real> ContinuousDistribution1D for Inversion1D<R> {
         let scaled: R = cast::<usize, R>(self.size()).unwrap() * u;
         let idx: usize = cast(scaled).unwrap();
         let delta = scaled - cast(idx).unwrap();
-        (R::one() - delta) * self.cdf[idx] + delta * self.cdf[idx + 1]
+        crate::utils::lerp(delta, self.cdf[idx], self.cdf[idx + 1])
     }
 }
 
