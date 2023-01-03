@@ -1,5 +1,9 @@
 use crate::data2d::Data2D;
-use num_traits::real::Real;
+use num_traits::{
+    real::Real,
+    Zero,
+    cast,
+};
 
 // 1D piecewise constant distribution
 // sampling functions are discrete
@@ -32,27 +36,29 @@ pub trait ContinuousDistribution1D: Distribution1D {
 
 // 2D piecewise constant distribution
 pub trait Distribution2D {
+    type Weight: Real;
+
     // constructor
-    fn build(weights: &Data2D<f32>) -> Self;
+    fn build(weights: &Data2D<Self::Weight>) -> Self;
 
     // takes in rand [0-1)x[0-1), returns (pdf, sampled uv coords)
-    fn sample(&self, uv: [f32; 2]) -> (f32, [usize; 2]);
+    fn sample(&self, uv: [Self::Weight; 2]) -> (Self::Weight, [usize; 2]);
 
     // takes in coords, returns pdf
-    fn pdf(&self, uv: [usize; 2]) -> f32;
+    fn pdf(&self, uv: [usize; 2]) -> Self::Weight;
 
     fn width(&self) -> usize;
     fn height(&self) -> usize;
 
     // fills demo image with sample_count samples
-    fn fill_demo_image(&self, demo: &mut Data2D<[f32; 3]>, rngs: impl Iterator<Item = [f32; 2]>) {
+    fn fill_demo_image(&self, demo: &mut Data2D<[Self::Weight; 3]>, rngs: impl Iterator<Item = [Self::Weight; 2]>) {
         for rng in rngs {
             let (_, [x, y]) = self.sample(rng);
             for is in -1..1 {
                 for js in -1..1 {
                     let j = (y as i32 + js).clamp(0, (demo.height() - 1) as i32) as usize;
                     let i = (x as i32 + is).clamp(0, (demo.width() - 1) as i32) as usize;
-                    demo[j][i] = [1000.0, 0.0, 0.0];
+                    demo[j][i] = [cast(1000.0).unwrap(), Self::Weight::zero(), Self::Weight::zero()];
                 }
             }
         }
@@ -63,7 +69,7 @@ pub trait Distribution2D {
 use {
     rand::{rngs::StdRng, Rng, SeedableRng},
     statrs::distribution::{ChiSquared, ContinuousCDF},
-    num_traits::{Zero, AsPrimitive, cast},
+    num_traits::AsPrimitive,
 };
 
 #[cfg(test)]
