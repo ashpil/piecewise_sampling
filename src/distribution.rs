@@ -152,16 +152,15 @@ pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_co
 
 #[cfg(test)]
 pub fn test_continuous_discrete_matching_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
-    where D::Weight: AsPrimitive<usize> + std::fmt::Display,
-        usize: AsPrimitive<D::Weight>,
+    where D::Weight: std::fmt::Display,
 {
     let dist = D::build(&weights);
 
     for i in 0..sample_count {
-        let input = i.as_() / sample_count.as_();
+        let input = cast::<usize, D::Weight>(i).unwrap() / cast(sample_count).unwrap();
         let (_, output_discrete) = dist.sample(input);
         let (_, output_continuous) = dist.sample_continuous(input);
-        assert_eq!((output_continuous * dist.size().as_()).as_(), output_discrete);
+        assert_eq!(cast::<D::Weight, usize>(output_continuous * cast::<usize, D::Weight>(dist.size()).unwrap()).unwrap(), output_discrete);
     }
 }
 
@@ -276,12 +275,12 @@ macro_rules! continuous_distribution_1d_tests {
 
             #[test]
             fn continuous_discrete_matching_uniform() {
-                test_continuous_discrete_matching_1d::<Dist<f64>>(&[1.0; 1_000], 1000);
+                test_continuous_discrete_matching_1d::<Dist<f64>>(&[1.0; 1_000], 1024);
             }
 
             #[test]
             fn continuous_discrete_matching_basic() {
-                test_continuous_discrete_matching_1d::<Dist<f64>>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1000);
+                test_continuous_discrete_matching_1d::<Dist<f64>>(&[1.0, 1.0, 2.0, 4.0, 8.0], 1024);
             }
 
             #[test]
@@ -290,7 +289,7 @@ macro_rules! continuous_distribution_1d_tests {
                 for (i, weight) in distr.iter_mut().enumerate() {
                     *weight = (5 * (i + 1)) as f64;
                 }
-                test_continuous_discrete_matching_1d::<Dist<f64>>(&distr, 1000);
+                test_continuous_discrete_matching_1d::<Dist<f64>>(&distr, 1024);
             }
         }
     }
