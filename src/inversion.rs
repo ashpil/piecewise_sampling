@@ -15,10 +15,10 @@ impl<R: Real> Distribution1D for Inversion1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
-        let mut cdf = vec![R::zero(); weights.len() + 1].into_boxed_slice();
+        let mut cdf = std::iter::once(R::zero()).chain(weights.iter().cloned()).collect::<Box<[R]>>();
 
-        for (i, weight) in weights.iter().enumerate() {
-            cdf[i + 1] = cdf[i] + *weight;
+        for i in 1..cdf.len() {
+            cdf[i] = cdf[i - 1] + cdf[i];
         }
 
         Self {
