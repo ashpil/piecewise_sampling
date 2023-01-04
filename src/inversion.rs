@@ -8,7 +8,6 @@ use num_traits::{
 };
 
 pub struct Inversion1D<R: Real> {
-    pub weight_sum: R,
     pub cdf: Box<[R]>,
 }
 
@@ -22,30 +21,24 @@ impl<R: Real> Distribution1D for Inversion1D<R> {
             cdf[i + 1] = cdf[i] + *weight;
         }
 
-        let weight_sum = cdf[weights.len()];
-
-        for weight in cdf.iter_mut() {
-            *weight = *weight / weight_sum;
-        }
-
         Self {
-            weight_sum,
             cdf,
         }
     }
 
     fn sample(&self, u: R) -> (R, usize) {
-        let offset = self.cdf.partition_point(|p| *p <= u) - 1;
-        let pdf = (self.cdf[offset + 1] - self.cdf[offset]) * self.weight_sum;
+        let point = u * self.integral();
+        let offset = self.cdf.partition_point(|p| *p <= point) - 1;
+        let pdf = self.cdf[offset + 1] - self.cdf[offset];
         (pdf, offset)
     }
 
     fn pdf(&self, u: usize) -> R {
-        (self.cdf[u + 1] - self.cdf[u]) * self.weight_sum
+        self.cdf[u + 1] - self.cdf[u]
     }
 
     fn integral(&self) -> R {
-        self.weight_sum
+        *self.cdf.last().unwrap()
     }
 
     fn size(&self) -> usize {
@@ -56,7 +49,7 @@ impl<R: Real> Distribution1D for Inversion1D<R> {
 impl<R: Real> ContinuousDistribution1D for Inversion1D<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
         let (pdf, offset) = self.sample(u);
-        let du = (u - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
+        let du = (u * self.integral() - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
         (pdf, (cast::<usize, R>(offset).unwrap() + du) / cast(self.size()).unwrap())
     }
 
@@ -64,7 +57,7 @@ impl<R: Real> ContinuousDistribution1D for Inversion1D<R> {
         let scaled: R = cast::<usize, R>(self.size()).unwrap() * u;
         let idx: usize = cast(scaled).unwrap();
         let delta = scaled - cast(idx).unwrap();
-        crate::utils::lerp(delta, self.cdf[idx], self.cdf[idx + 1])
+        crate::utils::lerp(delta, self.cdf[idx], self.cdf[idx + 1]) / self.integral()
     }
 }
 
