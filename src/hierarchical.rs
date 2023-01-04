@@ -1,3 +1,5 @@
+// Adapted from Matt Pharr's implementation
+
 use crate::distribution::{
     ContinuousDistribution1D,
     Distribution1D,
@@ -9,6 +11,7 @@ use num_traits::{
     Zero,
     cast,
 };
+use crate::utils::lerp;
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
@@ -39,7 +42,7 @@ impl<R: Real> Distribution1D for Hierarchical1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
-        let level_count = weights.len().ilog2() as usize + 1;
+        let level_count = weights.len().next_power_of_two().ilog2() as usize;
         let mut levels = vec![Default::default(); level_count].into_boxed_slice();
 
         levels[level_count - 1] = weights.to_vec().into_boxed_slice();
@@ -67,8 +70,8 @@ impl<R: Real> Distribution1D for Hierarchical1D<R> {
         let mut pdf = self.integral();
         let mut idx = 0;
 
-        for (i, level) in self.levels.iter().enumerate() {
-            if i > 0 { idx *= 2 }
+        for level in self.levels.iter() {
+            idx *= 2;
             let probs = [
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
@@ -116,8 +119,8 @@ impl<R: Real> ContinuousDistribution1D for Hierarchical1D<R> {
         let mut pdf = self.integral();
         let mut idx = 0;
 
-        for (i, level) in self.levels.iter().enumerate() {
-            if i > 0 { idx *= 2 }
+        for level in self.levels.iter() {
+            idx *= 2;
             let probs = [
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
@@ -130,7 +133,27 @@ impl<R: Real> ContinuousDistribution1D for Hierarchical1D<R> {
     }
 
     fn inverse_continuous(&self, u: R) -> R {
-        todo!()
+        let mut out = [R::zero(), R::one()];
+        let mut bounds = [
+            R::zero(),
+            cast::<usize, R>(self.size().next_power_of_two()).unwrap() / cast::<usize, R>(self.size()).unwrap()
+        ];
+        let mut idx = 0;
+
+        for level in self.levels.iter() {
+            idx *= 2;
+
+            let probs = [get_or_zero(level, idx + 0), get_or_zero(level, idx + 1)];
+            let bounds_mid = (bounds[0] + bounds[1]) / cast(2).unwrap();
+
+            let more = u < bounds_mid;
+            out[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out[0], out[1]);
+            bounds[more as usize] = bounds_mid;
+            idx += (!more) as usize;
+        }
+
+        let delta = (u - bounds[0]) / (bounds[1] - bounds[0]);
+        lerp(delta, out[0], out[1])
     }
 }
 

@@ -10,6 +10,7 @@ use pdf_maker::data2d::Data2D;
 use pdf_maker::distribution::ContinuousDistribution2D;
 use pdf_maker::inversion::Inversion1D;
 use pdf_maker::alias::ContinuousAlias1D;
+use pdf_maker::hierarchical::Hierarchical1D;
 use pdf_maker::adapter2d::Adapter2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
@@ -81,7 +82,7 @@ fn main() {
             let warping = sampler.visualize_warping(16);
             println!("  {} seconds for warping visualization", warping_start.elapsed().as_secs_f32());
 
-            write_rgb_file(format!("{}.exr", name), warping.width(), warping.height(), |x, y| {
+            write_rgb_file(format!("{}_warping.exr", name), warping.width(), warping.height(), |x, y| {
                 let p = warping[y][x];
                 (p[0], p[1], p[2])
             }).unwrap();
@@ -90,6 +91,7 @@ fn main() {
 
     demo_distribution::<Adapter2D::<Inversion1D<f32>>>("Inversion", &source_image, &density_image, &rands);
     demo_distribution::<Adapter2D::<ContinuousAlias1D<f32>>>("Alias", &source_image, &density_image, &rands);
+    demo_distribution::<Adapter2D::<Hierarchical1D<f32>>>("Hierarchical", &source_image, &density_image, &rands);
 
     println!("Done!");
 }
