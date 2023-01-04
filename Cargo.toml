@@ -13,9 +13,13 @@ num-traits = "0.2"
 
 [dev-dependencies]
 statrs = "0.16"
-criterion = "0.3"
+criterion = "0.4"
 num-bigfloat = { version = "1.6", default-features = false, features = ["rand"] }
 
 [[bench]]
 name = "alias_1d"
+harness = false
+
+[[bench]]
+name = "inversion_1d"
 harness = false
