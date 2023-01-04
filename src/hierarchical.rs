@@ -2,6 +2,7 @@
 
 use crate::distribution::{
     ContinuousDistribution1D,
+    ContinuousDistribution2D,
     Distribution1D,
     Distribution2D,
 };
@@ -177,7 +178,7 @@ impl<R: Real> Hierarchical2D<R> {
     }
 }
 
-impl<R: Real + std::fmt::Debug> Distribution2D for Hierarchical2D<R> {
+impl<R: Real> Distribution2D for Hierarchical2D<R> {
     type Weight = R;
 
     fn build(weights: &Data2D<R>) -> Self {
@@ -276,6 +277,88 @@ impl<R: Real + std::fmt::Debug> Distribution2D for Hierarchical2D<R> {
 
     fn height(&self) -> usize {
         self.levels.last().unwrap().height()
+    }
+}
+
+impl<R: Real> ContinuousDistribution2D for Hierarchical2D<R> {
+    fn sample_continuous(&self, [mut u, mut v]: [R; 2]) -> (R, [R; 2]) {
+        let mut pdf = self.integral();
+        let mut idx = [0; 2];
+
+        for (i, level) in self.levels.iter().enumerate() {
+            if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
+            if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
+
+            let probs_x = [
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+                get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
+            ];
+            let (pdf_x, idx_x) = select_remap(probs_x, &mut u);
+            idx[0] = idx[0] + idx_x as usize;
+            pdf = pdf * pdf_x;
+
+            let probs_y = [
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+            ];
+            let (pdf_y, idx_y) = select_remap(probs_y, &mut v);
+            idx[1] = idx[1] + idx_y as usize;
+            pdf = pdf * pdf_y;
+        }
+        let idx_normalized = [
+            (cast::<usize, R>(idx[0]).unwrap() + u) / cast(self.width()).unwrap(),
+            (cast::<usize, R>(idx[1]).unwrap() + v) / cast(self.height()).unwrap(),
+        ];
+        (pdf, idx_normalized)
+    }
+
+    fn inverse_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
+        let mut out_u = [R::zero(), R::one()];
+        let mut out_v = [R::zero(), R::one()];
+        let mut bounds_u = [
+            R::zero(),
+            cast::<usize, R>(self.width().next_power_of_two()).unwrap() / cast::<usize, R>(self.width()).unwrap()
+        ];
+        let mut bounds_v = [
+            R::zero(),
+            cast::<usize, R>(self.height().next_power_of_two()).unwrap() / cast::<usize, R>(self.height()).unwrap()
+        ];
+        let mut idx = [0; 2];
+
+        for (i, level) in self.levels.iter().enumerate() {
+            if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
+            if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
+
+            if level.width() > 1 {
+                let probs = [
+                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+                    get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
+                ];
+                let bounds_mid = (bounds_u[0] + bounds_u[1]) / cast(2).unwrap();
+
+                let more = u < bounds_mid;
+                out_u[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_u[0], out_u[1]);
+                bounds_u[more as usize] = bounds_mid;
+                idx[0] += (!more) as usize;
+            }
+
+            if level.height() > 1 {
+                let probs = [
+                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
+                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+                ];
+                let bounds_mid = (bounds_v[0] + bounds_v[1]) / cast(2).unwrap();
+
+                let more = v < bounds_mid;
+                out_v[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_v[0], out_v[1]);
+                bounds_v[more as usize] = bounds_mid;
+                idx[1] += (!more) as usize;
+            }
+        }
+
+        let delta_u = (u - bounds_u[0]) / (bounds_u[1] - bounds_u[0]);
+        let delta_v = (v - bounds_v[0]) / (bounds_v[1] - bounds_v[0]);
+        [lerp(delta_u, out_u[0], out_u[1]), lerp(delta_v, out_v[0], out_v[1])]
     }
 }
 

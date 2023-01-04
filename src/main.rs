@@ -10,7 +10,7 @@ use pdf_maker::data2d::Data2D;
 use pdf_maker::distribution::ContinuousDistribution2D;
 use pdf_maker::inversion::Inversion1D;
 use pdf_maker::alias::ContinuousAlias1D;
-use pdf_maker::hierarchical::Hierarchical1D;
+use pdf_maker::hierarchical::Hierarchical2D;
 use pdf_maker::adapter2d::Adapter2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
@@ -91,7 +91,7 @@ fn main() {
 
     demo_distribution::<Adapter2D::<Inversion1D<f32>>>("Inversion", &source_image, &density_image, &rands);
     demo_distribution::<Adapter2D::<ContinuousAlias1D<f32>>>("Alias", &source_image, &density_image, &rands);
-    demo_distribution::<Adapter2D::<Hierarchical1D<f32>>>("Hierarchical", &source_image, &density_image, &rands);
+    demo_distribution::<Hierarchical2D<f32>>("Hierarchical", &source_image, &density_image, &rands);
 
     println!("Done!");
 }
