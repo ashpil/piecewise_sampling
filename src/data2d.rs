@@ -4,6 +4,21 @@ pub struct Data2D<T> {
     width: usize,
 }
 
+impl<T: std::fmt::Debug> std::fmt::Debug for Data2D<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T> Default for Data2D<T> {
+    fn default() -> Self {
+        Self {
+            buffer: Vec::new(),
+            width: 0,
+        }
+    }
+}
+
 impl<T: Clone> Data2D<T> {
     pub fn new_same(width: usize, height: usize, same: T) -> Self {
         Self {
@@ -42,6 +57,10 @@ impl<T> Data2D<T> {
 
     pub fn iter(&self) -> std::slice::Chunks<T> {
         self.buffer.chunks(self.width)
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&[T]> {
+        self.buffer.get(idx * self.width..(idx + 1) * self.width)
     }
 }
 

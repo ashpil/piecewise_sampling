@@ -3,7 +3,10 @@
 use crate::distribution::{
     ContinuousDistribution1D,
     Distribution1D,
+    Distribution2D,
 };
+use crate::data2d::Data2D;
+use crate::utils::lerp;
 use num_traits::{
     real::Real,
     Num,
@@ -11,7 +14,6 @@ use num_traits::{
     Zero,
     cast,
 };
-use crate::utils::lerp;
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
@@ -32,6 +34,10 @@ fn select_remap<N: Num + NumCast + PartialOrd + Copy, R: Real>(weights: [N; 2], 
 
 fn get_or_zero<Z: Zero + Copy>(v: &[Z], idx: usize) -> Z {
     v.get(idx).copied().unwrap_or(Z::zero())
+}
+
+fn get_or_zero_2d<Z: Zero + Copy>(v: &Data2D<Z>, x: usize, y: usize) -> Z {
+    v.get(y).and_then(|s| s.get(x)).copied().unwrap_or(Z::zero())
 }
 
 pub struct Hierarchical1D<R: Real> {
@@ -157,6 +163,122 @@ impl<R: Real> ContinuousDistribution1D for Hierarchical1D<R> {
     }
 }
 
+pub struct Hierarchical2D<R: Real> {
+    levels: Box<[Data2D<R>]>,
+}
+
+impl<R: Real> Hierarchical2D<R> {
+    fn integral(&self) -> R {
+        let mut sum = R::zero();
+        for l in self.levels.first().unwrap().iter().flatten() {
+            sum = sum + *l;
+        }
+        sum
+    }
+}
+
+impl<R: Real + std::fmt::Debug> Distribution2D for Hierarchical2D<R> {
+    type Weight = R;
+
+    fn build(weights: &Data2D<R>) -> Self {
+        let max_size = weights.width().max(weights.height());
+        let level_count = max_size.next_power_of_two().ilog2() as usize;
+        let mut levels = vec![Default::default(); level_count].into_boxed_slice();
+
+        levels[level_count - 1] = weights.clone();
+
+        let mut nx = weights.width();
+        let mut ny = weights.height();
+        let mut prev_level_idx = level_count;
+        while nx > 2 || ny > 2 {
+            prev_level_idx -= 1;
+            nx = nx.div_ceil(2);
+            ny = ny.div_ceil(2);
+            let mut level = Data2D::new_same(nx, ny, R::zero());
+            for y in 0..ny {
+                for x in 0..nx {
+                    level[y][x] = 
+                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 0) +
+                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 0) +
+                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 1) +
+                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 1);
+                }
+            }
+            levels[prev_level_idx - 1] = level;
+        }
+
+        Self {
+            levels,
+        }
+    }
+
+    fn sample(&self, [mut u, mut v]: [R; 2]) -> (R, [usize; 2]) {
+        let mut pdf = self.integral();
+        let mut idx = [0; 2];
+
+        for (i, level) in self.levels.iter().enumerate() {
+            if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
+            if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
+
+            let probs_x = [
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+                get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
+            ];
+            let (pdf_x, idx_x) = select_remap(probs_x, &mut u);
+            idx[0] = idx[0] + idx_x as usize;
+            pdf = pdf * pdf_x;
+
+            let probs_y = [
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
+                get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
+            ];
+            let (pdf_y, idx_y) = select_remap(probs_y, &mut v);
+            idx[1] = idx[1] + idx_y as usize;
+            pdf = pdf * pdf_y;
+        }
+        (pdf, idx)
+    }
+
+    fn pdf(&self, [mut u, mut v]: [usize; 2]) -> R {
+        let mut pdf = self.integral();
+
+        for (i, level) in self.levels.iter().enumerate().rev() {
+            let x = get_or_zero_2d(level, u, v);
+            if x == R::zero() { return R::zero() }
+
+            let ue = if u % 2 == 1 {
+                u - 1 
+            } else {
+                u
+            };
+            let ve = if v % 2 == 1 {
+                v - 1 
+            } else {
+                v
+            };
+            pdf = pdf * x / (
+                get_or_zero_2d(level, ue + 0, ve + 0) +
+                get_or_zero_2d(level, ue + 1, ve + 0) +
+                get_or_zero_2d(level, ue + 0, ve + 1) +
+                get_or_zero_2d(level, ue + 1, ve + 1)
+            );
+
+            if i > 0 && self.levels[i - 1].width() < self.levels[i].width() { u /= 2 }
+            if i > 0 && self.levels[i - 1].height() < self.levels[i].height() { v /= 2 }
+        }
+
+        pdf
+    }
+
+    fn width(&self) -> usize {
+        self.levels.last().unwrap().width()
+    }
+
+    fn height(&self) -> usize {
+        self.levels.last().unwrap().height()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::distribution::distribution_1d_tests;
@@ -164,5 +286,19 @@ mod tests {
 
     distribution_1d_tests!(crate::hierarchical::Hierarchical1D);
     continuous_distribution_1d_tests!(crate::hierarchical::Hierarchical1D);
+
+    #[test]
+    fn build_2d() {
+        use crate::distribution::Distribution2D;
+        let width = 17;
+        let height = 16;
+        let mut dist = crate::data2d::Data2D::new_same(width, height, 0.0);
+        for j in 0..height {
+            for i in 0..width {
+                dist[j][i] = 2.0;
+            }
+        }
+        crate::hierarchical::Hierarchical2D::build(&dist);
+    }
 }
 
