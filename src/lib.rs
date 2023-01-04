@@ -1,5 +1,6 @@
 #![feature(sort_floats)]
 #![feature(int_roundings)]
+#![feature(new_uninit)]
 
 mod utils;
 

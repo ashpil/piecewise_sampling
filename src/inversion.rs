@@ -11,18 +11,37 @@ pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
 }
 
+fn build_fast<R: Real>(weights: &[R]) -> Inversion1D<R> {
+    let mut cdf: Box<[std::mem::MaybeUninit<R>]> = Box::new_uninit_slice(weights.len() + 1);
+    unsafe {
+        cdf[0].as_mut_ptr().write(R::zero());
+    }
+
+    for (i, weight) in weights.iter().enumerate() {
+        unsafe {
+            cdf[i + 1].as_mut_ptr().write(cdf[i].assume_init() + *weight);
+        }
+    }
+
+    Inversion1D {
+        cdf: unsafe { cdf.assume_init() },
+    }
+}
+
 impl<R: Real> Distribution1D for Inversion1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
-        let mut cdf = vec![R::zero(); weights.len() + 1].into_boxed_slice();
+        return build_fast(weights);
+        let mut cdf = Vec::with_capacity(weights.len() + 1);
+        cdf.push(R::zero());
 
         for (i, weight) in weights.iter().enumerate() {
-            cdf[i + 1] = cdf[i] + *weight;
+            cdf.push(cdf[i] + *weight);
         }
 
         Self {
-            cdf,
+            cdf: cdf.into_boxed_slice(),
         }
     }
 
