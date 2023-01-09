@@ -12,13 +12,14 @@ use alloc::{
 };
 
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Entry<R: Real> {
     pdf: R,
     select: R,
     alias: u32,
 }
 
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Alias1D<R: Real> {
     pub weight_sum: R,
     pub entries: Box<[Entry<R>]>,
@@ -115,7 +116,7 @@ impl<R: Real> Distribution1D for Alias1D<R> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct ContinuousEntry<R: Real> {
     pdf: R,
     select: R,
@@ -124,6 +125,7 @@ pub struct ContinuousEntry<R: Real> {
     alias_region: [R; 2], // which region of alias entry do we sample
 }
 
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct ContinuousAlias1D<R: Real> {
     pub weight_sum: R,
     pub entries: Box<[ContinuousEntry<R>]>,

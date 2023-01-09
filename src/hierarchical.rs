@@ -45,6 +45,7 @@ fn get_or_zero_2d<Z: Zero + Copy>(v: &Data2D<Z>, x: usize, y: usize) -> Z {
     v.get(y).and_then(|s| s.get(x)).copied().unwrap_or(Z::zero())
 }
 
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Hierarchical1D<R: Real> {
     levels: Box<[Box<[R]>]>,
 }
@@ -168,6 +169,7 @@ impl<R: Real> ContinuousDistribution1D for Hierarchical1D<R> {
     }
 }
 
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Hierarchical2D<R: Real> {
     levels: Box<[Data2D<R>]>,
 }

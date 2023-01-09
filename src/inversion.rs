@@ -9,6 +9,7 @@ use num_traits::{
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
 }
