@@ -92,17 +92,16 @@ impl<R: Real> Discrete1D for Alias1D<R> {
         }
     }
 
-    fn sample(&self, u: R) -> (R, usize) {
+    fn sample(&self, u: R) -> usize {
         let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
         let mut index: usize = num_traits::cast(scaled).unwrap();
-        let mut entry = self.entries[index];
+        let entry = self.entries[index];
         let v = scaled - num_traits::cast(index).unwrap();
         if entry.select <= v {
             index = entry.alias as usize;
-            entry = self.entries[entry.alias as usize];
         }
 
-        (entry.pdf, index)
+        index
     }
 
     fn pdf(&self, u: usize) -> R {
@@ -212,17 +211,16 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         }
     }
 
-    fn sample(&self, u: R) -> (R, usize) {
+    fn sample(&self, u: R) -> usize {
         let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
         let mut index: usize = num_traits::cast(scaled).unwrap();
-        let mut entry = self.entries[index];
+        let entry = self.entries[index];
         let v = scaled - num_traits::cast(index).unwrap();
         if entry.select <= v {
             index = entry.alias as usize;
-            entry = self.entries[entry.alias as usize];
         }
 
-        (entry.pdf, index)
+        index
     }
 
     fn pdf(&self, u: usize) -> R {
@@ -239,35 +237,31 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
 }
 
 impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
-    fn sample_continuous(&self, u: R) -> (R, R) {
+    fn sample_continuous(&self, u: R) -> R {
         let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
         let initial_index: usize = num_traits::cast(scaled).unwrap();
         let initial_entry = self.entries[initial_index];
         let v = scaled - num_traits::cast(initial_index).unwrap();
 
-        let (pdf, index, du) = if initial_entry.select <= v {
+        let (index, du) = if initial_entry.select <= v {
             // selected alias of initial entry
             let v_remapped = (v - initial_entry.select) / (R::one() - initial_entry.select);
 
-            let pdf = self.entries[initial_entry.alias as usize].pdf;
-
             let du = v_remapped * (initial_entry.alias_region[1] - initial_entry.alias_region[0]) + initial_entry.alias_region[0];
             let index = initial_entry.alias as usize;
-            (pdf, index, du)
+            (index, du)
         } else {
             // selected initial entry
             let v_remapped = v / initial_entry.select;
 
-            let pdf = initial_entry.pdf;
-
             let index = initial_index;
             let du = v_remapped * (initial_entry.own_region[1] - initial_entry.own_region[0]) + initial_entry.own_region[0];
 
-            (pdf, index, du)
+            (index, du)
         };
 
 
-        (pdf, (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap())
+        (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap()
     }
 
     // O(n) at worst

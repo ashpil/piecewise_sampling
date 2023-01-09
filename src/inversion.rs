@@ -31,11 +31,10 @@ impl<R: Real> Discrete1D for Inversion1D<R> {
         }
     }
 
-    fn sample(&self, u: R) -> (R, usize) {
+    fn sample(&self, u: R) -> usize {
         let point = u * self.integral();
         let offset = self.cdf.partition_point(|p| *p <= point) - 1;
-        let pdf = self.cdf[offset + 1] - self.cdf[offset];
-        (pdf, offset)
+        offset
     }
 
     fn pdf(&self, u: usize) -> R {
@@ -52,10 +51,10 @@ impl<R: Real> Discrete1D for Inversion1D<R> {
 }
 
 impl<R: Real> Continuous1D for Inversion1D<R> {
-    fn sample_continuous(&self, u: R) -> (R, R) {
-        let (pdf, offset) = self.sample(u);
+    fn sample_continuous(&self, u: R) -> R {
+        let offset = self.sample(u);
         let du = (u * self.integral() - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
-        (pdf, (cast::<usize, R>(offset).unwrap() + du) / cast(self.size()).unwrap())
+        (cast::<usize, R>(offset).unwrap() + du) / cast(self.size()).unwrap()
     }
 
     fn inverse_continuous(&self, u: R) -> R {

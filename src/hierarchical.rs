@@ -80,8 +80,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
         }
     }
 
-    fn sample(&self, mut u: R) -> (R, usize) {
-        let mut pdf = self.integral();
+    fn sample(&self, mut u: R) -> usize {
         let mut idx = 0;
 
         for level in self.levels.iter() {
@@ -90,11 +89,10 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            let (level_pdf, level_idx) = select_remap(probs, &mut u);
+            let (_, level_idx) = select_remap(probs, &mut u);
             idx = idx + level_idx as usize;
-            pdf = pdf * level_pdf;
         }
-        (pdf, idx)
+        idx
     }
 
     fn pdf(&self, mut u: usize) -> R {
@@ -129,8 +127,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
 }
 
 impl<R: Real> Continuous1D for Hierarchical1D<R> {
-    fn sample_continuous(&self, mut u: R) -> (R, R) {
-        let mut pdf = self.integral();
+    fn sample_continuous(&self, mut u: R) -> R {
         let mut idx = 0;
 
         for level in self.levels.iter() {
@@ -139,11 +136,10 @@ impl<R: Real> Continuous1D for Hierarchical1D<R> {
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            let (level_pdf, level_idx) = select_remap(probs, &mut u);
+            let (_, level_idx) = select_remap(probs, &mut u);
             idx = idx + level_idx as usize;
-            pdf = pdf * level_pdf;
         }
-        (pdf, (cast::<usize, R>(idx).unwrap() + u) / cast(self.size()).unwrap())
+        (cast::<usize, R>(idx).unwrap() + u) / cast(self.size()).unwrap()
     }
 
     fn inverse_continuous(&self, u: R) -> R {
@@ -221,8 +217,7 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
         }
     }
 
-    fn sample(&self, [mut u, mut v]: [R; 2]) -> (R, [usize; 2]) {
-        let mut pdf = self.integral();
+    fn sample(&self, [mut u, mut v]: [R; 2]) -> [usize; 2] {
         let mut idx = [0; 2];
 
         for (i, level) in self.levels.iter().enumerate() {
@@ -233,19 +228,17 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            let (pdf_x, idx_x) = select_remap(probs_x, &mut u);
+            let (_, idx_x) = select_remap(probs_x, &mut u);
             idx[0] = idx[0] + idx_x as usize;
-            pdf = pdf * pdf_x;
 
             let probs_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            let (pdf_y, idx_y) = select_remap(probs_y, &mut v);
+            let (_, idx_y) = select_remap(probs_y, &mut v);
             idx[1] = idx[1] + idx_y as usize;
-            pdf = pdf * pdf_y;
         }
-        (pdf, idx)
+        idx
     }
 
     fn pdf(&self, [mut u, mut v]: [usize; 2]) -> R {
@@ -289,8 +282,7 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
 }
 
 impl<R: Real> Continuous2D for Hierarchical2D<R> {
-    fn sample_continuous(&self, [mut u, mut v]: [R; 2]) -> (R, [R; 2]) {
-        let mut pdf = self.integral();
+    fn sample_continuous(&self, [mut u, mut v]: [R; 2]) -> [R; 2] {
         let mut idx = [0; 2];
 
         for (i, level) in self.levels.iter().enumerate() {
@@ -301,23 +293,21 @@ impl<R: Real> Continuous2D for Hierarchical2D<R> {
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            let (pdf_x, idx_x) = select_remap(probs_x, &mut u);
+            let (_, idx_x) = select_remap(probs_x, &mut u);
             idx[0] = idx[0] + idx_x as usize;
-            pdf = pdf * pdf_x;
 
             let probs_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            let (pdf_y, idx_y) = select_remap(probs_y, &mut v);
+            let (_, idx_y) = select_remap(probs_y, &mut v);
             idx[1] = idx[1] + idx_y as usize;
-            pdf = pdf * pdf_y;
         }
         let idx_normalized = [
             (cast::<usize, R>(idx[0]).unwrap() + u) / cast(self.width()).unwrap(),
             (cast::<usize, R>(idx[1]).unwrap() + v) / cast(self.height()).unwrap(),
         ];
-        (pdf, idx_normalized)
+        idx_normalized
     }
 
     fn inverse_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
@@ -380,7 +370,7 @@ mod tests {
 
     #[test]
     fn build_2d() {
-        use crate::distribution::Distribution2D;
+        use crate::distribution::Discrete2D;
         let width = 17;
         let height = 16;
         let mut dist = crate::data2d::Data2D::new_same(width, height, 0.0);

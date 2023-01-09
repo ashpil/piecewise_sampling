@@ -13,8 +13,8 @@ pub trait Discrete1D {
     // constructor
     fn build(weights: &[Self::Weight]) -> Self;
 
-    // takes in rand [0-1), returns (pdf, sampled idx)
-    fn sample(&self, u: Self::Weight) -> (Self::Weight, usize);
+    // takes in rand [0-1), returns sampled idx
+    fn sample(&self, u: Self::Weight) -> usize;
 
     // takes in coord, returns pdf
     fn pdf(&self, u: usize) -> Self::Weight;
@@ -27,8 +27,8 @@ pub trait Discrete1D {
 }
 
 pub trait Continuous1D: Discrete1D {
-    // takes in rand [0-1), returns (pdf, sampled [0-1))
-    fn sample_continuous(&self, u: Self::Weight) -> (Self::Weight, Self::Weight);
+    // takes in rand [0-1), returns sampled [0-1)
+    fn sample_continuous(&self, u: Self::Weight) -> Self::Weight;
 
     // inverse of above
     fn inverse_continuous(&self, u: Self::Weight) -> Self::Weight;
@@ -41,8 +41,8 @@ pub trait Discrete2D {
     // constructor
     fn build(weights: &Data2D<Self::Weight>) -> Self;
 
-    // takes in rand [0-1)x[0-1), returns (pdf, sampled uv coords)
-    fn sample(&self, uv: [Self::Weight; 2]) -> (Self::Weight, [usize; 2]);
+    // takes in rand [0-1)x[0-1), returns sampled uv coords
+    fn sample(&self, uv: [Self::Weight; 2]) -> [usize; 2];
 
     // takes in coords, returns pdf
     fn pdf(&self, uv: [usize; 2]) -> Self::Weight;
@@ -53,7 +53,7 @@ pub trait Discrete2D {
     // fills demo image with sample_count samples
     fn fill_demo_image(&self, demo: &mut Data2D<[Self::Weight; 3]>, rngs: impl Iterator<Item = [Self::Weight; 2]>) {
         for rng in rngs {
-            let (_, [x, y]) = self.sample(rng);
+            let [x, y] = self.sample(rng);
             for is in -1..1 {
                 for js in -1..1 {
                     let j = (y as i32 + js).clamp(0, (demo.height() - 1) as i32) as usize;
@@ -66,8 +66,8 @@ pub trait Discrete2D {
 }
 
 pub trait Continuous2D: Discrete2D {
-    // takes in rand [0-1), returns (pdf, sampled [0-1)x[0-1))
-    fn sample_continuous(&self, uv: [Self::Weight; 2]) -> (Self::Weight, [Self::Weight; 2]);
+    // takes in rand [0-1), returns sampled [0-1)x[0-1)
+    fn sample_continuous(&self, uv: [Self::Weight; 2]) -> [Self::Weight; 2];
 
     // inverse of above
     fn inverse_continuous(&self, uv: [Self::Weight; 2]) -> [Self::Weight; 2];
@@ -112,10 +112,9 @@ pub fn chisq_distribution_1d<D: Discrete1D>(expected: &[D::Weight], sample_count
     let mut rng = StdRng::seed_from_u64(0);
 
     for _ in 0..sample_count {
-        let (pdf, idx) = dist.sample(rng.gen());
+        let idx = dist.sample(rng.gen());
+        let pdf = dist.pdf(idx);
         assert!((expected[idx] - pdf).abs() < 0.001.as_(), "{} expected pdf not near generated {}", expected[idx], pdf);
-        let reconstructed_pdf = dist.pdf(idx);
-        assert!((pdf - reconstructed_pdf).abs() < 0.001.as_(), "{} generated pdf not near reconstructed {}", pdf, reconstructed_pdf);
         hist[idx] += 1;
     }
 
@@ -142,7 +141,7 @@ pub fn test_inv_1d<D: Continuous1D>(weights: &[D::Weight], sample_count: usize)
 
     for i in 0..sample_count {
         let x = cast::<usize, D::Weight>(i).unwrap() / cast(sample_count).unwrap();
-        let (_, y) = dist.sample_continuous(x);
+        let y = dist.sample_continuous(x);
         let inv = dist.inverse_continuous(y);
         assert!((inv - x).abs() < cast(0.0001).unwrap(), "{} original not equal to {} inverse of sample {}", x, inv, y);
     }
@@ -156,8 +155,8 @@ pub fn test_continuous_discrete_matching_1d<D: Continuous1D>(weights: &[D::Weigh
 
     for i in 0..sample_count {
         let input = cast::<usize, D::Weight>(i).unwrap() / cast(sample_count).unwrap();
-        let (_, output_discrete) = dist.sample(input);
-        let (_, output_continuous) = dist.sample_continuous(input);
+        let output_discrete = dist.sample(input);
+        let output_continuous = dist.sample_continuous(input);
         assert_eq!(cast::<D::Weight, usize>(output_continuous * cast::<usize, D::Weight>(dist.size()).unwrap()).unwrap(), output_discrete);
     }
 }
@@ -213,7 +212,7 @@ macro_rules! continuous_distribution_1d_tests {
                 let sample_count = 1000;
                 let mut values = Vec::with_capacity(sample_count);
                 for i in 0..sample_count {
-                    let (_, x) = dist.sample_continuous(i as f32 / sample_count as f32);
+                    let x = dist.sample_continuous(i as f32 / sample_count as f32);
                     values.push(x);
                 }
                 values.sort_floats();
@@ -238,7 +237,7 @@ macro_rules! continuous_distribution_1d_tests {
                 let sample_count = 1000;
                 let mut values = Vec::with_capacity(sample_count);
                 for i in 0..sample_count {
-                    let (_, x) = dist.sample_continuous(i as f64 / sample_count as f64);
+                    let x = dist.sample_continuous(i as f64 / sample_count as f64);
                     values.push(x);
                 }
                 values.sort_floats();

@@ -40,11 +40,11 @@ impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
         }
     }
 
-    fn sample(&self, [u, v]: [D::Weight; 2]) -> (D::Weight, [usize; 2]) {
-        let (pdf_y, y) = self.marginal.sample(v);
-        let (pdf_x, x) = self.conditional[y].sample(u);
+    fn sample(&self, [u, v]: [D::Weight; 2]) -> [usize; 2] {
+        let y = self.marginal.sample(v);
+        let x = self.conditional[y].sample(u);
 
-        (pdf_x * pdf_y, [x, y])
+        [x, y]
     }
 
     fn pdf(&self, [u, v]: [usize; 2]) -> D::Weight {
@@ -64,12 +64,12 @@ impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
 }
 
 impl<D: Continuous1D> Continuous2D for Adapter2D<D> {
-    fn sample_continuous(&self, [u, v]: [D::Weight; 2]) -> (D::Weight, [D::Weight; 2]) {
-        let (pdf_y, y) = self.marginal.sample_continuous(v);
+    fn sample_continuous(&self, [u, v]: [D::Weight; 2]) -> [D::Weight; 2] {
+        let y = self.marginal.sample_continuous(v);
         let offset_y = cast::<D::Weight, usize>(y * cast(self.height()).unwrap()).unwrap();
-        let (pdf_x, x) = self.conditional[offset_y].sample_continuous(u);
+        let x = self.conditional[offset_y].sample_continuous(u);
 
-        (pdf_x * pdf_y, [x, y])
+        [x, y]
     }
 
     fn inverse_continuous(&self, [u, v]: [D::Weight; 2]) -> [D::Weight; 2] {
