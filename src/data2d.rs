@@ -1,9 +1,13 @@
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 #[derive(Clone)]
 pub struct Data2D<T> {
     buffer: Vec<T>,
     width: usize,
 }
 
+#[cfg(feature = "std")]
 impl<T: std::fmt::Debug> std::fmt::Debug for Data2D<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.iter()).finish()
@@ -22,13 +26,13 @@ impl<T> Default for Data2D<T> {
 impl<T: Clone> Data2D<T> {
     pub fn new_same(width: usize, height: usize, same: T) -> Self {
         Self {
-            buffer: vec![same; width * height],
+            buffer: alloc::vec![same; width * height],
             width,
         }
     }
 }
 
-impl<T> std::ops::Index<usize> for Data2D<T> {
+impl<T> core::ops::Index<usize> for Data2D<T> {
     type Output = [T];
 
     fn index(&self, idx: usize) -> &Self::Output {
@@ -36,7 +40,7 @@ impl<T> std::ops::Index<usize> for Data2D<T> {
     }
 }
 
-impl<T> std::ops::IndexMut<usize> for Data2D<T> {
+impl<T> core::ops::IndexMut<usize> for Data2D<T> {
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.buffer[idx * self.width..(idx + 1) * self.width]
     }
@@ -55,7 +59,7 @@ impl<T> Data2D<T> {
         self.buffer.len() / self.width
     }
 
-    pub fn iter(&self) -> std::slice::Chunks<T> {
+    pub fn iter(&self) -> core::slice::Chunks<T> {
         self.buffer.chunks(self.width)
     }
 

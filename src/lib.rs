@@ -1,5 +1,10 @@
+#![cfg_attr(not(test), no_std)]
+
 #![feature(sort_floats)]
 #![feature(int_roundings)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 mod utils;
 

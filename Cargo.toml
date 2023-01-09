@@ -5,11 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+std = []
+
 [dependencies]
 exr = "1.5"
 sobol_burley = "0.4"
 rand = "0.8"
-num-traits = "0.2"
+num-traits = { version = "0.2", default-features = false, features = ["libm" ] }
 
 [dev-dependencies]
 statrs = "0.16"

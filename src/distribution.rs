@@ -72,9 +72,7 @@ pub trait ContinuousDistribution2D: Distribution2D {
     // inverse of above
     fn inverse_continuous(&self, uv: [Self::Weight; 2]) -> [Self::Weight; 2];
 
-    fn visualize_warping(&self, block_count: usize) -> Data2D<[f32; 3]>
-        where <Self as Distribution2D>::Weight: std::fmt::Display
-    {
+    fn visualize_warping(&self, block_count: usize) -> Data2D<[f32; 3]> {
         let mut out = Data2D::new_same(self.width(), self.height(), [0.0, 0.0, 0.0]);
         for j in 0..self.height() {
             for i in 0..self.width() {

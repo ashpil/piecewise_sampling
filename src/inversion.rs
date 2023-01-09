@@ -6,6 +6,8 @@ use num_traits::{
     real::Real,
     cast,
 };
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
 
 pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
@@ -15,7 +17,7 @@ impl<R: Real> Distribution1D for Inversion1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
-        let mut cdf = std::iter::once(R::zero()).chain(weights.iter().cloned()).collect::<Box<[R]>>();
+        let mut cdf = core::iter::once(R::zero()).chain(weights.iter().cloned()).collect::<Box<[R]>>();
 
         for i in 1..cdf.len() {
             cdf[i] = cdf[i - 1] + cdf[i];

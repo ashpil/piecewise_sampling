@@ -7,6 +7,12 @@ use crate::distribution::{
 };
 use num_traits::cast;
 
+#[cfg(not(feature = "std"))]
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
+
 pub struct Adapter2D<D: Distribution1D> {
     pub marginal: D,
     pub conditional: Box<[D]>,
