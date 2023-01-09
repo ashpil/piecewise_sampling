@@ -17,8 +17,10 @@ use num_traits::{
 };
 
 #[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
-
+use alloc::{
+    boxed::Box,
+    vec,
+};
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
@@ -55,7 +57,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
 
     fn build(weights: &[R]) -> Self {
         let level_count = weights.len().next_power_of_two().ilog2() as usize;
-        let mut levels = alloc::vec![Default::default(); level_count].into_boxed_slice();
+        let mut levels = vec![Default::default(); level_count].into_boxed_slice();
 
         levels[level_count - 1] = weights.to_vec().into_boxed_slice();
 
@@ -64,7 +66,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
         while n > 2 {
             prev_level_idx -= 1;
             n = n.div_ceil(2);
-            let mut level = alloc::vec![R::zero(); n].into_boxed_slice();
+            let mut level = vec![R::zero(); n].into_boxed_slice();
             for (i, l) in level.iter_mut().enumerate() {
                 *l =
                     get_or_zero(&levels[prev_level_idx], 2 * i + 0) +
@@ -190,7 +192,7 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
     fn build(weights: &Data2D<R>) -> Self {
         let max_size = weights.width().max(weights.height());
         let level_count = max_size.next_power_of_two().ilog2() as usize;
-        let mut levels = alloc::vec![Default::default(); level_count].into_boxed_slice();
+        let mut levels = vec![Default::default(); level_count].into_boxed_slice();
 
         levels[level_count - 1] = weights.clone();
 

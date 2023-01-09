@@ -9,6 +9,7 @@ use num_traits::real::Real;
 use alloc::{
     boxed::Box,
     vec::Vec,
+    vec,
 };
 
 pub type Alias2D<R> = crate::Adapter2D<Alias1D<R>>;
@@ -40,7 +41,7 @@ impl<R: Real> Discrete1D for Alias1D<R> {
         // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = alloc::vec![Entry { pdf: R::zero(), select: R::zero(), alias: 0 }; n].into_boxed_slice();
+        let mut entries = vec![Entry { pdf: R::zero(), select: R::zero(), alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
@@ -148,8 +149,8 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = alloc::vec![ContinuousEntry { pdf: R::zero(), select: R::zero(), alias: 0, own_region: [R::zero(), R::one()], alias_region: [R::zero(), R::zero()] }; n].into_boxed_slice();
-        let mut adjusted_weights = alloc::vec![R::zero(); n].into_boxed_slice();
+        let mut entries = vec![ContinuousEntry { pdf: R::zero(), select: R::zero(), alias: 0, own_region: [R::zero(), R::one()], alias_region: [R::zero(), R::zero()] }; n].into_boxed_slice();
+        let mut adjusted_weights = vec![R::zero(); n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();

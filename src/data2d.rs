@@ -1,5 +1,8 @@
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{
+    vec::Vec,
+    vec,
+};
 
 #[derive(Clone)]
 pub struct Data2D<T> {
@@ -26,7 +29,7 @@ impl<T> Default for Data2D<T> {
 impl<T: Clone> Data2D<T> {
     pub fn new_same(width: usize, height: usize, same: T) -> Self {
         Self {
-            buffer: alloc::vec![same; width * height],
+            buffer: vec![same; width * height],
             width,
         }
     }
