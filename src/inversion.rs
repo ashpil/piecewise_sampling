@@ -1,6 +1,6 @@
 use crate::distribution::{
-    Distribution1D,
-    ContinuousDistribution1D,
+    Discrete1D,
+    Continuous1D,
 };
 use num_traits::{
     real::Real,
@@ -9,12 +9,14 @@ use num_traits::{
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
+pub type Inversion2D<R> = crate::Adapter2D<Inversion1D<R>>;
+
 #[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
 }
 
-impl<R: Real> Distribution1D for Inversion1D<R> {
+impl<R: Real> Discrete1D for Inversion1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
@@ -49,7 +51,7 @@ impl<R: Real> Distribution1D for Inversion1D<R> {
     }
 }
 
-impl<R: Real> ContinuousDistribution1D for Inversion1D<R> {
+impl<R: Real> Continuous1D for Inversion1D<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
         let (pdf, offset) = self.sample(u);
         let du = (u * self.integral() - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);

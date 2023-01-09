@@ -7,7 +7,7 @@ use num_traits::{
 
 // 1D piecewise constant distribution
 // sampling functions are discrete
-pub trait Distribution1D {
+pub trait Discrete1D {
     type Weight: Real;
 
     // constructor
@@ -26,7 +26,7 @@ pub trait Distribution1D {
     fn size(&self) -> usize;
 }
 
-pub trait ContinuousDistribution1D: Distribution1D {
+pub trait Continuous1D: Discrete1D {
     // takes in rand [0-1), returns (pdf, sampled [0-1))
     fn sample_continuous(&self, u: Self::Weight) -> (Self::Weight, Self::Weight);
 
@@ -35,7 +35,7 @@ pub trait ContinuousDistribution1D: Distribution1D {
 }
 
 // 2D piecewise constant distribution
-pub trait Distribution2D {
+pub trait Discrete2D {
     type Weight: Real;
 
     // constructor
@@ -65,7 +65,7 @@ pub trait Distribution2D {
     }
 }
 
-pub trait ContinuousDistribution2D: Distribution2D {
+pub trait Continuous2D: Discrete2D {
     // takes in rand [0-1), returns (pdf, sampled [0-1)x[0-1))
     fn sample_continuous(&self, uv: [Self::Weight; 2]) -> (Self::Weight, [Self::Weight; 2]);
 
@@ -99,7 +99,7 @@ use {
 };
 
 #[cfg(test)]
-pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_count: usize)
+pub fn chisq_distribution_1d<D: Discrete1D>(expected: &[D::Weight], sample_count: usize)
     where rand::distributions::Standard: rand::distributions::Distribution<D::Weight>,
         D::Weight: std::fmt::Display + std::fmt::Debug + AsPrimitive<f64>,
         u32: AsPrimitive<D::Weight>,
@@ -135,7 +135,7 @@ pub fn chisq_distribution_1d<D: Distribution1D>(expected: &[D::Weight], sample_c
 }
 
 #[cfg(test)]
-pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
+pub fn test_inv_1d<D: Continuous1D>(weights: &[D::Weight], sample_count: usize)
     where D::Weight: std::fmt::Display,
 {
     let dist = D::build(&weights);
@@ -149,7 +149,7 @@ pub fn test_inv_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_co
 }
 
 #[cfg(test)]
-pub fn test_continuous_discrete_matching_1d<D: ContinuousDistribution1D>(weights: &[D::Weight], sample_count: usize)
+pub fn test_continuous_discrete_matching_1d<D: Continuous1D>(weights: &[D::Weight], sample_count: usize)
     where D::Weight: std::fmt::Display,
 {
     let dist = D::build(&weights);
@@ -198,8 +198,8 @@ macro_rules! continuous_distribution_1d_tests {
     ($impl:path) => {
         mod continuous_distribution_1d {
             use crate::distribution::{
-                Distribution1D,
-                ContinuousDistribution1D,
+                Discrete1D,
+                Continuous1D,
                 test_inv_1d,
                 test_continuous_discrete_matching_1d,
             };

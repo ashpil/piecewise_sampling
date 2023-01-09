@@ -1,10 +1,10 @@
 // Adapted from Matt Pharr's implementation
 
 use crate::distribution::{
-    ContinuousDistribution1D,
-    ContinuousDistribution2D,
-    Distribution1D,
-    Distribution2D,
+    Continuous1D,
+    Continuous2D,
+    Discrete1D,
+    Discrete2D,
 };
 use crate::data2d::Data2D;
 use crate::utils::lerp;
@@ -50,7 +50,7 @@ pub struct Hierarchical1D<R: Real> {
     levels: Box<[Box<[R]>]>,
 }
 
-impl<R: Real> Distribution1D for Hierarchical1D<R> {
+impl<R: Real> Discrete1D for Hierarchical1D<R> {
     type Weight = R;
 
     fn build(weights: &[R]) -> Self {
@@ -126,7 +126,7 @@ impl<R: Real> Distribution1D for Hierarchical1D<R> {
     }
 }
 
-impl<R: Real> ContinuousDistribution1D for Hierarchical1D<R> {
+impl<R: Real> Continuous1D for Hierarchical1D<R> {
     fn sample_continuous(&self, mut u: R) -> (R, R) {
         let mut pdf = self.integral();
         let mut idx = 0;
@@ -184,7 +184,7 @@ impl<R: Real> Hierarchical2D<R> {
     }
 }
 
-impl<R: Real> Distribution2D for Hierarchical2D<R> {
+impl<R: Real> Discrete2D for Hierarchical2D<R> {
     type Weight = R;
 
     fn build(weights: &Data2D<R>) -> Self {
@@ -286,7 +286,7 @@ impl<R: Real> Distribution2D for Hierarchical2D<R> {
     }
 }
 
-impl<R: Real> ContinuousDistribution2D for Hierarchical2D<R> {
+impl<R: Real> Continuous2D for Hierarchical2D<R> {
     fn sample_continuous(&self, [mut u, mut v]: [R; 2]) -> (R, [R; 2]) {
         let mut pdf = self.integral();
         let mut idx = [0; 2];

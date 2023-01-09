@@ -1,9 +1,9 @@
 use crate::data2d::Data2D;
 use crate::distribution::{
-    Distribution1D,
-    Distribution2D,
-    ContinuousDistribution1D,
-    ContinuousDistribution2D,
+    Discrete1D,
+    Discrete2D,
+    Continuous1D,
+    Continuous2D,
 };
 use num_traits::cast;
 
@@ -14,12 +14,12 @@ use alloc::{
 };
 
 #[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
-pub struct Adapter2D<D: Distribution1D> {
+pub struct Adapter2D<D: Discrete1D> {
     pub marginal: D,
     pub conditional: Box<[D]>,
 }
 
-impl<D: Distribution1D> Distribution2D for Adapter2D<D> {
+impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
     type Weight = D::Weight;
 
     fn build(weights: &Data2D<D::Weight>) -> Self {
@@ -63,7 +63,7 @@ impl<D: Distribution1D> Distribution2D for Adapter2D<D> {
     }
 }
 
-impl<D: ContinuousDistribution1D> ContinuousDistribution2D for Adapter2D<D> {
+impl<D: Continuous1D> Continuous2D for Adapter2D<D> {
     fn sample_continuous(&self, [u, v]: [D::Weight; 2]) -> (D::Weight, [D::Weight; 2]) {
         let (pdf_y, y) = self.marginal.sample_continuous(v);
         let offset_y = cast::<D::Weight, usize>(y * cast(self.height()).unwrap()).unwrap();

@@ -1,6 +1,6 @@
 use crate::distribution::{
-    Distribution1D,
-    ContinuousDistribution1D,
+    Discrete1D,
+    Continuous1D,
 };
 use crate::utils;
 use num_traits::real::Real;
@@ -11,6 +11,7 @@ use alloc::{
     vec::Vec,
 };
 
+pub type Alias2D<R> = crate::Adapter2D<Alias1D<R>>;
 
 #[derive(Clone, Copy, Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct Entry<R: Real> {
@@ -25,7 +26,7 @@ pub struct Alias1D<R: Real> {
     pub entries: Box<[Entry<R>]>,
 }
 
-impl<R: Real> Distribution1D for Alias1D<R> {
+impl<R: Real> Discrete1D for Alias1D<R> {
     type Weight = R;
 
     // Vose O(n)
@@ -116,6 +117,8 @@ impl<R: Real> Distribution1D for Alias1D<R> {
     }
 }
 
+pub type ContinuousAlias2D<R> = crate::Adapter2D<ContinuousAlias1D<R>>;
+
 #[derive(Clone, Copy, Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct ContinuousEntry<R: Real> {
     pdf: R,
@@ -131,7 +134,7 @@ pub struct ContinuousAlias1D<R: Real> {
     pub entries: Box<[ContinuousEntry<R>]>,
 }
 
-impl<R: Real> Distribution1D for ContinuousAlias1D<R>
+impl<R: Real> Discrete1D for ContinuousAlias1D<R>
 {
     type Weight = R;
 
@@ -234,7 +237,7 @@ impl<R: Real> Distribution1D for ContinuousAlias1D<R>
     }
 }
 
-impl<R: Real> ContinuousDistribution1D for ContinuousAlias1D<R> {
+impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
     fn sample_continuous(&self, u: R) -> (R, R) {
         let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
         let initial_index: usize = num_traits::cast(scaled).unwrap();

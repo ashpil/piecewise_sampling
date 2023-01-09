@@ -6,12 +6,12 @@ use std::time::Instant;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use pdf_maker::data2d::Data2D;
-use pdf_maker::distribution::ContinuousDistribution2D;
-use pdf_maker::inversion::Inversion1D;
-use pdf_maker::alias::ContinuousAlias1D;
-use pdf_maker::hierarchical::Hierarchical2D;
-use pdf_maker::adapter2d::Adapter2D;
+use pdf_maker::distribution::Continuous2D;
+use pdf_maker::Data2D;
+use pdf_maker::Inversion1D;
+use pdf_maker::ContinuousAlias1D;
+use pdf_maker::Hierarchical2D;
+use pdf_maker::Adapter2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
     r * 0.2126 + g * 0.7152 + b * 0.0722
@@ -53,7 +53,7 @@ fn main() {
         StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(sample_count * 2).array_chunks::<2>().collect()
     };
 
-    fn demo_distribution<D: ContinuousDistribution2D<Weight=f32>>(name: &str, source_image: &Data2D<[f32; 3]>, weights: &Data2D<f32>, rands: &Vec<[f32; 2]>) {
+    fn demo_distribution<D: Continuous2D<Weight=f32>>(name: &str, source_image: &Data2D<[f32; 3]>, weights: &Data2D<f32>, rands: &Vec<[f32; 2]>) {
 
         println!("{} method", name);
 
