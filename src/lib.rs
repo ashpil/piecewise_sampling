@@ -1,6 +1,6 @@
 #![cfg_attr(all(not(feature = "std"), not(test)), no_std)]
 
-#![feature(sort_floats)]
+#![cfg_attr(test, feature(sort_floats))]
 #![feature(int_roundings)]
 
 #[cfg(not(feature = "std"))]
