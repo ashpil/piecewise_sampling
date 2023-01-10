@@ -13,7 +13,7 @@ use alloc::{
     vec::Vec,
 };
 
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 pub struct Adapter2D<D: Discrete1D> {
     pub marginal: D,
     pub conditional: Box<[D]>,

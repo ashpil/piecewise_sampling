@@ -10,7 +10,7 @@ std = []
 
 [dependencies]
 num-traits = { version = "0.2", default-features = false, features = ["libm" ] }
-rkyv = { version = "0.7", default-features = false, features = ["size_32", "alloc" ] }
+rkyv = { version = "0.7", default-features = false, features = ["size_32", "alloc" ], optional = true }
 
 [dev-dependencies]
 statrs = "0.16"

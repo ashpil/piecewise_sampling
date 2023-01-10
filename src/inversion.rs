@@ -11,7 +11,7 @@ use alloc::boxed::Box;
 
 pub type Inversion2D<R> = crate::Adapter2D<Inversion1D<R>>;
 
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 pub struct Inversion1D<R: Real> {
     pub cdf: Box<[R]>,
 }
