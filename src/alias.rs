@@ -110,14 +110,14 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
 
     fn sample(&self, u: R) -> usize {
         let scaled: R = <usize as AsPrimitive<R>>::as_(self.entries.len()) * u;
-        let mut index: usize = scaled.as_();
+        let index: usize = scaled.as_();
         let entry = self.entries[index];
         let v = (scaled - index.as_()) * self.weight_sum.as_();
         if entry.select.as_() <= v {
-            index = entry.alias as usize;
+            entry.alias as usize
+        } else {
+            index
         }
-
-        index
     }
 
     fn integral(&self) -> W {
