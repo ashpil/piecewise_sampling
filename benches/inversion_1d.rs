@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use pdf_maker::distribution::Distribution1D;
-use pdf_maker::inversion::Inversion1D;
+use discrete_sampling::distribution::Discrete1D;
+use discrete_sampling::Inversion1D;
 
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
