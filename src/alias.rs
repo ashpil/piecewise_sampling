@@ -28,27 +28,37 @@ pub struct Alias1D<R: Real> {
     pub entries: Box<[Entry<R>]>,
 }
 
-impl<R: Real> Discrete1D for Alias1D<R> {
+impl<R: Real + 'static> Discrete1D for Alias1D<R> {
     type Weight = R;
 
     // Vose O(n)
     fn build(weights: &[R]) -> Self {
         let n = weights.len();
 
-        // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
-        // will give us numbers rounded to nearest float, which might be the next integer over, not
-        // the actual one
-        // would be nice if rust supported other float rounding modes...
-        // TODO: disable if not f32
-        assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
+        let is_f32 = core::any::TypeId::of::<f32>() == core::any::TypeId::of::<R>();
+
+        if is_f32 {
+            // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
+            // will give us numbers rounded to nearest float, which might be the next integer over, not
+            // the actual one
+            // would be nice if rust supported other float rounding modes...
+            assert!(n < 2_000_000, "Alias1D on f32s not reliable for distributions with more than 2,000,000 elements");
+        }
 
         let mut entries = vec![Entry { pdf: R::zero(), select: R::zero(), alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
 
-        // this may not be necessary if not f32, TODO: conditionally disable
-        let weight_sum = utils::kahan_sum(weights.iter().cloned());
+        let weight_sum = if is_f32 {
+            utils::kahan_sum(weights.iter().cloned())
+        } else {
+            let mut sum = R::zero();
+            for weight in weights {
+                sum = sum + *weight;
+            }
+            sum
+        };
 
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = (*weight * num_traits::cast(n).unwrap()) / weight_sum;
