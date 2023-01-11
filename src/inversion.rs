@@ -1,5 +1,6 @@
 use crate::distribution::{
     Discrete1D,
+    Discrete1DPdf,
     Continuous1D,
 };
 use num_traits::{
@@ -38,16 +39,18 @@ impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Inversion1D<W
         offset
     }
 
-    fn pdf(&self, u: usize) -> W {
-        self.cdf[u + 1] - self.cdf[u]
-    }
-
     fn integral(&self) -> W {
         *self.cdf.last().unwrap()
     }
 
     fn size(&self) -> usize {
         self.cdf.len() - 1
+    }
+}
+
+impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1DPdf<R> for Inversion1D<W> {
+    fn pdf(&self, u: usize) -> W {
+        self.cdf[u + 1] - self.cdf[u]
     }
 }
 

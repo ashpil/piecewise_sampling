@@ -16,14 +16,17 @@ pub trait Discrete1D<R> {
     // takes in rand [0-1), returns sampled idx
     fn sample(&self, u: R) -> usize;
 
-    // takes in coord, returns pdf
-    fn pdf(&self, u: usize) -> Self::Weight;
-
     // sum of all weights
     fn integral(&self) -> Self::Weight;
 
     // range of sampled idxs, should be len of weights
     fn size(&self) -> usize;
+}
+
+pub trait Discrete1DPdf<R>: Discrete1D<R> {
+    // takes in coord, returns unnormalized pdf
+    // can normalize by dividing by integral
+    fn pdf(&self, u: usize) -> Self::Weight;
 }
 
 pub trait Continuous1D<R>: Discrete1D<R> {
@@ -44,8 +47,8 @@ pub trait Discrete2D<R> {
     // takes in rand [0-1)x[0-1), returns sampled uv coords
     fn sample(&self, uv: [R; 2]) -> [usize; 2];
 
-    // takes in coords, returns pdf
-    fn pdf(&self, uv: [usize; 2]) -> Self::Weight;
+    // sum of all weights
+    fn integral(&self) -> Self::Weight;
 
     fn width(&self) -> usize;
     fn height(&self) -> usize;
@@ -63,6 +66,12 @@ pub trait Discrete2D<R> {
             }
         }
     }
+}
+
+pub trait Discrete2DPdf<R>: Discrete2D<R> {
+    // takes in coord, returns unnormalized pdf
+    // can normalize by dividing by integral
+    fn pdf(&self, uv: [usize; 2]) -> Self::Weight;
 }
 
 pub trait Continuous2D<R>: Discrete2D<R> {

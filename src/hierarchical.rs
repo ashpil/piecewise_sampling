@@ -4,7 +4,9 @@ use crate::distribution::{
     Continuous1D,
     Continuous2D,
     Discrete1D,
+    Discrete1DPdf,
     Discrete2D,
+    Discrete2DPdf,
 };
 use crate::data2d::Data2D;
 use crate::utils::lerp;
@@ -94,6 +96,17 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for 
         idx
     }
 
+    fn integral(&self) -> W {
+        let first = self.levels.first().unwrap();
+        first[0] + first[1]
+    }
+
+    fn size(&self) -> usize {
+        self.levels.last().unwrap().len()
+    }
+}
+
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1DPdf<R> for Hierarchical1D<W> {
     fn pdf(&self, mut u: usize) -> W {
         let mut pdf = self.integral();
 
@@ -113,15 +126,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for 
         }
 
         pdf
-    }
-
-    fn integral(&self) -> W {
-        let first = self.levels.first().unwrap();
-        first[0] + first[1]
-    }
-
-    fn size(&self) -> usize {
-        self.levels.last().unwrap().len()
     }
 }
 
@@ -170,16 +174,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> fo
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 pub struct Hierarchical2D<W> {
     levels: Box<[Data2D<W>]>,
-}
-
-impl<W: Num + Copy> Hierarchical2D<W> {
-    fn integral(&self) -> W {
-        let mut sum = W::zero();
-        for l in self.levels.first().unwrap().iter().flatten() {
-            sum = sum + *l;
-        }
-        sum
-    }
 }
 
 impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for Hierarchical2D<W> {
@@ -241,6 +235,24 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
         idx
     }
 
+    fn integral(&self) -> W {
+        let mut sum = W::zero();
+        for l in self.levels.first().unwrap().iter().flatten() {
+            sum = sum + *l;
+        }
+        sum
+    }
+
+    fn width(&self) -> usize {
+        self.levels.last().unwrap().width()
+    }
+
+    fn height(&self) -> usize {
+        self.levels.last().unwrap().height()
+    }
+}
+
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2DPdf<R> for Hierarchical2D<W> {
     fn pdf(&self, [mut u, mut v]: [usize; 2]) -> W {
         let mut pdf = self.integral();
 
@@ -270,14 +282,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
         }
 
         pdf
-    }
-
-    fn width(&self) -> usize {
-        self.levels.last().unwrap().width()
-    }
-
-    fn height(&self) -> usize {
-        self.levels.last().unwrap().height()
     }
 }
 

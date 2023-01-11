@@ -21,7 +21,6 @@ pub type Alias2D<R> = crate::Adapter2D<Alias1D<R>>;
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 pub struct Entry<W> {
-    pdf: W,
     select: W,
     alias: u32,
 }
@@ -52,7 +51,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
             assert!(n < 2_000_000, "Alias1D on f32s not reliable for distributions with more than 2,000,000 elements");
         }
 
-        let mut entries = vec![Entry { pdf: W::zero(), select: W::zero(), alias: 0 }; n].into_boxed_slice();
+        let mut entries = vec![Entry { select: W::zero(), alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
@@ -69,7 +68,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
 
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = *weight * n.as_();
-            entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
             if adjusted_weight < weight_sum {
                 small.push(i as u32);
@@ -122,10 +120,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
         index
     }
 
-    fn pdf(&self, u: usize) -> W {
-        self.entries[u].pdf
-    }
-
     fn integral(&self) -> W {
         self.weight_sum
     }
@@ -140,7 +134,6 @@ pub type ContinuousAlias2D<W> = crate::Adapter2D<ContinuousAlias1D<W>>;
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 pub struct ContinuousEntry<W: Real> {
-    pdf: W,
     select: W,
     alias: u32,
     own_region: [W; 2], // which region of own entry do we sample
@@ -168,7 +161,7 @@ impl<W: Real + AsPrimitive<usize>> Discrete1D<W> for ContinuousAlias1D<W>
         // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = vec![ContinuousEntry { pdf: W::zero(), select: W::zero(), alias: 0, own_region: [W::zero(), W::one()], alias_region: [W::zero(), W::zero()] }; n].into_boxed_slice();
+        let mut entries = vec![ContinuousEntry { select: W::zero(), alias: 0, own_region: [W::zero(), W::one()], alias_region: [W::zero(), W::zero()] }; n].into_boxed_slice();
         let mut adjusted_weights = vec![W::zero(); n].into_boxed_slice();
 
         let mut small = Vec::new();
@@ -180,7 +173,6 @@ impl<W: Real + AsPrimitive<usize>> Discrete1D<W> for ContinuousAlias1D<W>
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = (*weight * n.as_()) / weight_sum;
             adjusted_weights[i] = adjusted_weight;
-            entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
             if adjusted_weight < W::one() {
                 small.push(i as u32);
@@ -241,10 +233,6 @@ impl<W: Real + AsPrimitive<usize>> Discrete1D<W> for ContinuousAlias1D<W>
         }
 
         index
-    }
-
-    fn pdf(&self, u: usize) -> W {
-        self.entries[u].pdf
     }
 
     fn integral(&self) -> W {

@@ -1,7 +1,9 @@
 use crate::data2d::Data2D;
 use crate::distribution::{
     Discrete1D,
+    Discrete1DPdf,
     Discrete2D,
+    Discrete2DPdf,
     Continuous1D,
     Continuous2D,
 };
@@ -50,11 +52,8 @@ impl<D: Discrete1D<R>, R> Discrete2D<R> for Adapter2D<D> {
         [x, y]
     }
 
-    fn pdf(&self, [u, v]: [usize; 2]) -> D::Weight {
-        let pdf_y = self.marginal.pdf(v);
-        let pdf_x = self.conditional[v].pdf(u);
-
-        pdf_y * pdf_x
+    fn integral(&self) -> D::Weight {
+        self.marginal.integral()
     }
 
     fn height(&self) -> usize {
@@ -63,6 +62,15 @@ impl<D: Discrete1D<R>, R> Discrete2D<R> for Adapter2D<D> {
 
     fn width(&self) -> usize {
         self.conditional[0].size()
+    }
+}
+
+impl<D: Discrete1DPdf<R>, R> Discrete2DPdf<R> for Adapter2D<D> {
+    fn pdf(&self, [u, v]: [usize; 2]) -> D::Weight {
+        let pdf_y = self.marginal.pdf(v);
+        let pdf_x = self.conditional[v].pdf(u);
+
+        pdf_y * pdf_x
     }
 }
 
