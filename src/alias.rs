@@ -51,11 +51,6 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
             assert!(n < 2_000_000, "Alias1D on f32s not reliable for distributions with more than 2,000,000 elements");
         }
 
-        let mut entries = vec![Entry { select: W::zero(), alias: 0 }; n].into_boxed_slice();
-
-        let mut small = Vec::new();
-        let mut large = Vec::new();
-
         let weight_sum = if is_f32 {
             utils::kahan_sum(weights.iter().cloned())
         } else {
@@ -66,27 +61,32 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
             sum
         };
 
+        let mut entries = vec![Entry { select: W::zero(), alias: 0 }; n].into_boxed_slice();
+
+        let mut smalls = Vec::new();
+        let mut larges = Vec::new();
+
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = *weight * n.as_();
             entries[i].select = adjusted_weight;
             if adjusted_weight < weight_sum {
-                small.push(i as u32);
+                smalls.push(i as u32);
             } else {
-                large.push(i as u32);
+                larges.push(i as u32);
             }
         }
 
-        while !small.is_empty() && !large.is_empty() {
-            let l = small.pop().unwrap();
-            let g = large.pop().unwrap();
+        while !smalls.is_empty() && !larges.is_empty() {
+            let small = smalls.pop().unwrap();
+            let large = larges.pop().unwrap();
 
-            entries[l as usize].alias = g;
-            entries[g as usize].select = (entries[g as usize].select + entries[l as usize].select) - weight_sum;
+            entries[small as usize].alias = large;
+            entries[large as usize].select = (entries[large as usize].select + entries[small as usize].select) - weight_sum;
 
-            if entries[g as usize].select < weight_sum {
-                small.push(g);
+            if entries[large as usize].select < weight_sum {
+                smalls.push(large);
             } else {
-                large.push(g);
+                larges.push(large);
             }
         }
 
@@ -98,8 +98,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
 
         // these are actually large but are in small due to float error
         // they are currently slightly less than the weight sum, we need to make sure they're the weight sum
-        while let Some(l) = small.pop() {
-            entries[l as usize].select = weight_sum;
+        while let Some(small) = smalls.pop() {
+            entries[small as usize].select = weight_sum;
         }
 
         Self {
