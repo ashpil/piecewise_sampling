@@ -1,22 +1,45 @@
 use num_traits::{
-    real::Real,
+    Zero,
     One,
-    Num,
     NumOps,
+    real::Real,
 };
 
-// unlikely to be necessary if not float, but why not,
-// let it be used on arbitrary nums
-pub fn kahan_sum<N: Num + Copy>(input: impl IntoIterator<Item=N>) -> N {
-    let mut sum = N::zero();
-    let mut err = N::zero();
-    for v in input {
-        let y = v - err;
-        let t = sum + y;
-        err = (t - sum) - y;
-        sum = t;
+// a little bit of a workaround to allow SIMD summation for all types
+// SIMD summation for floats is actually usually significantly more accurate
+// than normal summation
+pub trait Sum {
+    fn sum(input: impl IntoIterator<Item=Self>) -> Self;
+}
+
+impl Sum for f32 {
+    fn sum(input: impl IntoIterator<Item=Self>) -> Self {
+        let mut sum = 0.0;
+        for v in input {
+            sum = unsafe { core::intrinsics::fadd_fast(sum, v) };
+        }
+        sum
     }
-    sum
+}
+
+impl Sum for f64 {
+    fn sum(input: impl IntoIterator<Item=Self>) -> Self {
+        let mut sum = 0.0;
+        for v in input {
+            sum = unsafe { core::intrinsics::fadd_fast(sum, v) };
+        }
+        sum
+    }
+}
+
+impl<F: core::ops::Add + Zero> Sum for F {
+    default fn sum(input: impl IntoIterator<Item=F>) -> F {
+        let mut sum = F::zero();
+        for v in input {
+            sum = sum + v;
+        }
+        sum
+    }
 }
 
 // from pbrt

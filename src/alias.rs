@@ -53,15 +53,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
 
         assert!(n < u32::MAX as usize, "Current Alias1D implementation doesn't work for distributions with more than or equal to u32::MAX elements");
 
-        let weight_sum = if is_f32 {
-            utils::kahan_sum(weights.iter().cloned())
-        } else {
-            let mut sum = W::zero();
-            for weight in weights {
-                sum = sum + *weight;
-            }
-            sum
-        };
+        let weight_sum = <W as utils::Sum>::sum(weights.iter().cloned());
 
         let mut entries = vec![Entry { select: W::zero(), alias: 0 }; n].into_boxed_slice();
 
@@ -182,8 +174,7 @@ impl<W: Real + AsPrimitive<usize>> Discrete1D<W> for ContinuousAlias1D<W>
         let mut small = Vec::new();
         let mut large = Vec::new();
 
-        // this may not be necessary if not f32, TODO: conditionally disable
-        let weight_sum = utils::kahan_sum(weights.iter().cloned());
+        let weight_sum = <W as utils::Sum>::sum(weights.iter().cloned());
 
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = (*weight * n.as_()) / weight_sum;

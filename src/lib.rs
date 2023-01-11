@@ -2,6 +2,8 @@
 
 #![cfg_attr(test, feature(sort_floats))]
 #![feature(int_roundings)]
+#![feature(core_intrinsics)]
+#![feature(min_specialization)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
