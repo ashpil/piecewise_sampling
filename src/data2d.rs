@@ -10,9 +10,8 @@ pub struct Data2D<T> {
     width: usize,
 }
 
-#[cfg(feature = "std")]
-impl<T: std::fmt::Debug> std::fmt::Debug for Data2D<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T: core::fmt::Debug> core::fmt::Debug for Data2D<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
