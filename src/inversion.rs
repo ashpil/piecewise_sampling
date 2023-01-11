@@ -18,7 +18,7 @@ pub struct Inversion1D<W> {
     pub cdf: Box<[W]>,
 }
 
-impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Inversion1D<W> {
+impl<W: Num + AsPrimitive<R> + PartialOrd, R: Real + AsPrimitive<W> + 'static> Discrete1D<R> for Inversion1D<W> {
     type Weight = W;
 
     fn build(weights: &[W]) -> Self {
@@ -34,8 +34,8 @@ impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Inversion1D<W
     }
 
     fn sample(&self, u: R) -> usize {
-        let point = u * self.integral().as_();
-        let offset = self.cdf.partition_point(|p| p.as_() <= point) - 1;
+        let point = (u * self.integral().as_()).as_();
+        let offset = self.cdf.partition_point(|p| *p <= point) - 1;
         offset
     }
 
@@ -48,13 +48,13 @@ impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Inversion1D<W
     }
 }
 
-impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1DPdf<R> for Inversion1D<W> {
+impl<W: Num + AsPrimitive<R> + PartialOrd, R: Real + AsPrimitive<W> + 'static> Discrete1DPdf<R> for Inversion1D<W> {
     fn pdf(&self, u: usize) -> W {
         self.cdf[u + 1] - self.cdf[u]
     }
 }
 
-impl<W: Num + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'static> Continuous1D<R> for Inversion1D<W>
+impl<W: Num + AsPrimitive<R> + PartialOrd, R: Real + AsPrimitive<W> + AsPrimitive<usize> + 'static> Continuous1D<R> for Inversion1D<W>
     where usize: AsPrimitive<R>,
 {
     fn sample_continuous(&self, u: R) -> R {
