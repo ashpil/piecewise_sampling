@@ -1,14 +1,15 @@
 use num_traits::{
     real::Real,
     One,
+    Num,
     NumOps,
 };
 
 // unlikely to be necessary if not float, but why not,
-// let it be used on arbitrary reals
-pub fn kahan_sum<R: Real>(input: impl IntoIterator<Item=R>) -> R {
-    let mut sum = R::zero();
-    let mut err = R::zero();
+// let it be used on arbitrary nums
+pub fn kahan_sum<N: Num + Copy>(input: impl IntoIterator<Item=N>) -> N {
+    let mut sum = N::zero();
+    let mut err = N::zero();
     for v in input {
         let y = v - err;
         let t = sum + y;

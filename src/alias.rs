@@ -3,7 +3,11 @@ use crate::distribution::{
     Continuous1D,
 };
 use crate::utils;
-use num_traits::real::Real;
+use num_traits::{
+    Num,
+    real::Real,
+    AsPrimitive,
+};
 
 #[cfg(not(feature = "std"))]
 use alloc::{
@@ -16,26 +20,29 @@ pub type Alias2D<R> = crate::Adapter2D<Alias1D<R>>;
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Entry<R: Real> {
-    pdf: R,
-    select: R,
+pub struct Entry<W> {
+    pdf: W,
+    select: W,
     alias: u32,
 }
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Alias1D<R: Real> {
-    pub weight_sum: R,
-    pub entries: Box<[Entry<R>]>,
+pub struct Alias1D<W> {
+    pub weight_sum: W,
+    pub entries: Box<[Entry<W>]>,
 }
 
-impl<R: Real + 'static> Discrete1D for Alias1D<R> {
-    type Weight = R;
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'static> Discrete1D<R> for Alias1D<W>
+    where usize: AsPrimitive<R>,
+          usize: AsPrimitive<W>,
+{
+    type Weight = W;
 
     // Vose O(n)
-    fn build(weights: &[R]) -> Self {
+    fn build(weights: &[W]) -> Self {
         let n = weights.len();
 
-        let is_f32 = core::any::TypeId::of::<f32>() == core::any::TypeId::of::<R>();
+        let is_f32 = core::any::TypeId::of::<f32>() == core::any::TypeId::of::<W>();
 
         if is_f32 {
             // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
@@ -45,7 +52,7 @@ impl<R: Real + 'static> Discrete1D for Alias1D<R> {
             assert!(n < 2_000_000, "Alias1D on f32s not reliable for distributions with more than 2,000,000 elements");
         }
 
-        let mut entries = vec![Entry { pdf: R::zero(), select: R::zero(), alias: 0 }; n].into_boxed_slice();
+        let mut entries = vec![Entry { pdf: W::zero(), select: W::zero(), alias: 0 }; n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
@@ -53,7 +60,7 @@ impl<R: Real + 'static> Discrete1D for Alias1D<R> {
         let weight_sum = if is_f32 {
             utils::kahan_sum(weights.iter().cloned())
         } else {
-            let mut sum = R::zero();
+            let mut sum = W::zero();
             for weight in weights {
                 sum = sum + *weight;
             }
@@ -61,7 +68,7 @@ impl<R: Real + 'static> Discrete1D for Alias1D<R> {
         };
 
         for (i, weight) in weights.iter().enumerate() {
-            let adjusted_weight = *weight * num_traits::cast(n).unwrap();
+            let adjusted_weight = *weight * n.as_();
             entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
             if adjusted_weight < weight_sum {
@@ -104,22 +111,22 @@ impl<R: Real + 'static> Discrete1D for Alias1D<R> {
     }
 
     fn sample(&self, u: R) -> usize {
-        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
-        let mut index: usize = num_traits::cast(scaled).unwrap();
+        let scaled: R = <usize as AsPrimitive<R>>::as_(self.entries.len()) * u;
+        let mut index: usize = scaled.as_();
         let entry = self.entries[index];
-        let v = (scaled - num_traits::cast(index).unwrap()) * self.weight_sum;
-        if entry.select <= v {
+        let v = (scaled - index.as_()) * self.weight_sum.as_();
+        if entry.select.as_() <= v {
             index = entry.alias as usize;
         }
 
         index
     }
 
-    fn pdf(&self, u: usize) -> R {
+    fn pdf(&self, u: usize) -> W {
         self.entries[u].pdf
     }
 
-    fn integral(&self) -> R {
+    fn integral(&self) -> W {
         self.weight_sum
     }
 
@@ -128,29 +135,30 @@ impl<R: Real + 'static> Discrete1D for Alias1D<R> {
     }
 }
 
-pub type ContinuousAlias2D<R> = crate::Adapter2D<ContinuousAlias1D<R>>;
+pub type ContinuousAlias2D<W> = crate::Adapter2D<ContinuousAlias1D<W>>;
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct ContinuousEntry<R: Real> {
-    pdf: R,
-    select: R,
+pub struct ContinuousEntry<W: Real> {
+    pdf: W,
+    select: W,
     alias: u32,
-    own_region: [R; 2], // which region of own entry do we sample
-    alias_region: [R; 2], // which region of alias entry do we sample
+    own_region: [W; 2], // which region of own entry do we sample
+    alias_region: [W; 2], // which region of alias entry do we sample
 }
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct ContinuousAlias1D<R: Real> {
-    pub weight_sum: R,
-    pub entries: Box<[ContinuousEntry<R>]>,
+pub struct ContinuousAlias1D<W: Real> {
+    pub weight_sum: W,
+    pub entries: Box<[ContinuousEntry<W>]>,
 }
 
-impl<R: Real> Discrete1D for ContinuousAlias1D<R>
+impl<W: Real + AsPrimitive<usize>> Discrete1D<W> for ContinuousAlias1D<W>
+    where usize: AsPrimitive<W>,
 {
-    type Weight = R;
+    type Weight = W;
 
-    fn build(weights: &[R]) -> Self {
+    fn build(weights: &[W]) -> Self {
         let n = weights.len();
 
         // due to the fact that we use f32s, multiplying a [0-1) f32 by about 2 million or so
@@ -160,8 +168,8 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         // TODO: disable if not f32
         assert!(n < 2_000_000, "Alias1D not reliable for distributions with more than 2,000,000 elements");
 
-        let mut entries = vec![ContinuousEntry { pdf: R::zero(), select: R::zero(), alias: 0, own_region: [R::zero(), R::one()], alias_region: [R::zero(), R::zero()] }; n].into_boxed_slice();
-        let mut adjusted_weights = vec![R::zero(); n].into_boxed_slice();
+        let mut entries = vec![ContinuousEntry { pdf: W::zero(), select: W::zero(), alias: 0, own_region: [W::zero(), W::one()], alias_region: [W::zero(), W::zero()] }; n].into_boxed_slice();
+        let mut adjusted_weights = vec![W::zero(); n].into_boxed_slice();
 
         let mut small = Vec::new();
         let mut large = Vec::new();
@@ -170,11 +178,11 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         let weight_sum = utils::kahan_sum(weights.iter().cloned());
 
         for (i, weight) in weights.iter().enumerate() {
-            let adjusted_weight = (*weight * num_traits::cast(n).unwrap()) / weight_sum;
+            let adjusted_weight = (*weight * n.as_()) / weight_sum;
             adjusted_weights[i] = adjusted_weight;
             entries[i].pdf = *weight;
             entries[i].select = adjusted_weight;
-            if adjusted_weight < R::one() {
+            if adjusted_weight < W::one() {
                 small.push(i as u32);
             } else {
                 large.push(i as u32);
@@ -188,15 +196,15 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
 
             entries[less as usize].alias = more;
             let mut region = entries[more as usize].own_region;
-            region[0] = region[1] - (R::one() - entries[less as usize].select) / adjusted_weights[more as usize];
+            region[0] = region[1] - (W::one() - entries[less as usize].select) / adjusted_weights[more as usize];
             entries[less as usize].alias_region = region;
             entries[more as usize].own_region[1] = region[0];
 
             // more numerically stable version of this
-            // entries[more as usize].select -= (R::one() - entries[less as usize].select);
-            entries[more as usize].select = (entries[more as usize].select + entries[less as usize].select) - R::one();
+            // entries[more as usize].select -= (W::one() - entries[less as usize].select);
+            entries[more as usize].select = (entries[more as usize].select + entries[less as usize].select) - W::one();
 
-            if entries[more as usize].select < R::one() {
+            if entries[more as usize].select < W::one() {
                 small.push(more);
             } else {
                 large.push(more);
@@ -208,13 +216,13 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         // but we use division by select in our continuous sampling methods, so we
         // still need to make sure it's exactly one
         while let Some(g) = large.pop() {
-            entries[g as usize].select = R::one();
+            entries[g as usize].select = W::one();
         }
 
         // these are actually large but are in small due to float error
         // should be slightly less than 1.0, we need to make sure they're 1.0
         while let Some(l) = small.pop() {
-            entries[l as usize].select = R::one();
+            entries[l as usize].select = W::one();
         }
 
         Self {
@@ -223,11 +231,11 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         }
     }
 
-    fn sample(&self, u: R) -> usize {
-        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
-        let mut index: usize = num_traits::cast(scaled).unwrap();
+    fn sample(&self, u: W) -> usize {
+        let scaled: W = self.entries.len().as_() * u;
+        let mut index: usize = scaled.as_();
         let entry = self.entries[index];
-        let v = scaled - num_traits::cast(index).unwrap();
+        let v = scaled - index.as_();
         if entry.select <= v {
             index = entry.alias as usize;
         }
@@ -235,11 +243,11 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
         index
     }
 
-    fn pdf(&self, u: usize) -> R {
+    fn pdf(&self, u: usize) -> W {
         self.entries[u].pdf
     }
 
-    fn integral(&self) -> R {
+    fn integral(&self) -> W {
         self.weight_sum
     }
 
@@ -248,16 +256,18 @@ impl<R: Real> Discrete1D for ContinuousAlias1D<R>
     }
 }
 
-impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
-    fn sample_continuous(&self, u: R) -> R {
-        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
-        let initial_index: usize = num_traits::cast(scaled).unwrap();
+impl<W: Real + AsPrimitive<usize>> Continuous1D<W> for ContinuousAlias1D<W>
+    where usize: AsPrimitive<W>,
+{
+    fn sample_continuous(&self, u: W) -> W {
+        let scaled: W = self.entries.len().as_() * u;
+        let initial_index: usize = scaled.as_();
         let initial_entry = self.entries[initial_index];
-        let v = scaled - num_traits::cast(initial_index).unwrap();
+        let v = scaled - initial_index.as_();
 
         let (index, du) = if initial_entry.select <= v {
             // selected alias of initial entry
-            let v_remapped = (v - initial_entry.select) / (R::one() - initial_entry.select);
+            let v_remapped = (v - initial_entry.select) / (W::one() - initial_entry.select);
 
             let du = v_remapped * (initial_entry.alias_region[1] - initial_entry.alias_region[0]) + initial_entry.alias_region[0];
             let index = initial_entry.alias as usize;
@@ -273,17 +283,17 @@ impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
         };
 
 
-        (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap()
+        (index.as_() + du) / self.size().as_()
     }
 
     // O(n) at worst
-    fn inverse_continuous(&self, u: R) -> R {
-        let scaled: R = num_traits::cast::<usize, R>(self.entries.len()).unwrap() * u;
-        let initial_index: usize = num_traits::cast(scaled).unwrap();
+    fn inverse_continuous(&self, u: W) -> W {
+        let scaled: W = self.entries.len().as_() * u;
+        let initial_index: usize = scaled.as_();
         let initial_entry = self.entries[initial_index];
-        let v = scaled - num_traits::cast(initial_index).unwrap();
+        let v = scaled - initial_index.as_();
 
-        let (index, du) = if initial_entry.own_region[0] == R::zero() && initial_entry.own_region[1] == R::one() {
+        let (index, du) = if initial_entry.own_region[0] == W::zero() && initial_entry.own_region[1] == W::one() {
             (initial_index, v * initial_entry.select)
         } else {
             if v <= initial_entry.own_region[1] {
@@ -296,7 +306,7 @@ impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
                         if entry.alias_region[0] <= v && v <= entry.alias_region[1] {
                             let v_remapped = (v - entry.alias_region[0]) / (entry.alias_region[1] - entry.alias_region[0]);
                             index = Some(entry_idx);
-                            du = Some(v_remapped * (R::one() - entry.select) + entry.select);
+                            du = Some(v_remapped * (W::one() - entry.select) + entry.select);
                         }
                     }
                 }
@@ -304,7 +314,7 @@ impl<R: Real> Continuous1D for ContinuousAlias1D<R> {
             }
         };
 
-        (num_traits::cast::<usize, R>(index).unwrap() + du) / num_traits::cast(self.size()).unwrap()
+        (index.as_() + du) / self.size().as_()
     }
 }
 

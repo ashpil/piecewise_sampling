@@ -26,7 +26,7 @@ fn main() {
         buffer[pos.y()][pos.x()] = luminance([r, g, b]);
     }).unwrap().layer_data.channel_data.pixels;
 
-    fn sample_perf<D: Discrete2D<Weight=f32>>(name: &str, weights: &Data2D<f32>) {
+    fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>) {
         println!("{} method", name);
 
         let sampler = {

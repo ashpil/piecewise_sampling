@@ -9,11 +9,10 @@ use crate::distribution::{
 use crate::data2d::Data2D;
 use crate::utils::lerp;
 use num_traits::{
-    real::Real,
     Num,
-    NumCast,
+    real::Real,
     Zero,
-    cast,
+    AsPrimitive,
 };
 
 #[cfg(not(feature = "std"))]
@@ -24,11 +23,11 @@ use alloc::{
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
-fn select_remap<N: Num + NumCast + PartialOrd + Copy, R: Real>(weights: [N; 2], rand: &mut R) -> (R, u8) {
+fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights: [N; 2], rand: &mut R) -> (R, u8) {
     let weight_sum = weights[0] + weights[1];
-    let weight_1_r = cast::<N, R>(weights[0]).unwrap();
-    let weight_2_r = cast::<N, R>(weights[1]).unwrap();
-    let weight_sum_r = cast::<N, R>(weight_sum).unwrap();
+    let weight_1_r = weights[0].as_();
+    let weight_2_r = weights[1].as_();
+    let weight_sum_r = weight_sum.as_();
     let new_rand: R = *rand * weight_sum_r;
     if new_rand < weight_1_r {
         *rand = new_rand / weight_1_r;
@@ -48,14 +47,14 @@ fn get_or_zero_2d<Z: Zero + Copy>(v: &Data2D<Z>, x: usize, y: usize) -> Z {
 }
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Hierarchical1D<R: Real> {
-    levels: Box<[Box<[R]>]>,
+pub struct Hierarchical1D<W> {
+    levels: Box<[Box<[W]>]>,
 }
 
-impl<R: Real> Discrete1D for Hierarchical1D<R> {
-    type Weight = R;
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Hierarchical1D<W> {
+    type Weight = W;
 
-    fn build(weights: &[R]) -> Self {
+    fn build(weights: &[W]) -> Self {
         let level_count = weights.len().next_power_of_two().ilog2() as usize;
         let mut levels = vec![Default::default(); level_count].into_boxed_slice();
 
@@ -66,7 +65,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
         while n > 2 {
             prev_level_idx -= 1;
             n = n.div_ceil(2);
-            let mut level = vec![R::zero(); n].into_boxed_slice();
+            let mut level = vec![W::zero(); n].into_boxed_slice();
             for (i, l) in level.iter_mut().enumerate() {
                 *l =
                     get_or_zero(&levels[prev_level_idx], 2 * i + 0) +
@@ -95,13 +94,13 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
         idx
     }
 
-    fn pdf(&self, mut u: usize) -> R {
+    fn pdf(&self, mut u: usize) -> W {
         let mut pdf = self.integral();
 
         for level in self.levels.iter().rev() {
             let v = get_or_zero(level, u);
 
-            if v == R::zero() { return R::zero() }
+            if v == W::zero() { return W::zero() }
 
             let ue = if u % 2 == 1 {
                 u - 1 
@@ -116,7 +115,7 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
         pdf
     }
 
-    fn integral(&self) -> R {
+    fn integral(&self) -> W {
         let first = self.levels.first().unwrap();
         first[0] + first[1]
     }
@@ -126,7 +125,8 @@ impl<R: Real> Discrete1D for Hierarchical1D<R> {
     }
 }
 
-impl<R: Real> Continuous1D for Hierarchical1D<R> {
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> for Hierarchical1D<W> where usize: AsPrimitive<R>,
+{
     fn sample_continuous(&self, mut u: R) -> R {
         let mut idx = 0;
 
@@ -139,24 +139,24 @@ impl<R: Real> Continuous1D for Hierarchical1D<R> {
             let (_, level_idx) = select_remap(probs, &mut u);
             idx = idx + level_idx as usize;
         }
-        (cast::<usize, R>(idx).unwrap() + u) / cast(self.size()).unwrap()
+        (idx.as_() + u) / self.size().as_()
     }
 
     fn inverse_continuous(&self, u: R) -> R {
         let mut out = [R::zero(), R::one()];
         let mut bounds = [
             R::zero(),
-            cast::<usize, R>(self.size().next_power_of_two()).unwrap() / cast::<usize, R>(self.size()).unwrap()
+            self.size().next_power_of_two().as_() / self.size().as_(),
         ];
         let mut idx = 0;
 
         for level in self.levels.iter() {
             idx *= 2;
 
-            let probs = [get_or_zero(level, idx + 0), get_or_zero(level, idx + 1)];
-            let bounds_mid = (bounds[0] + bounds[1]) / cast(2).unwrap();
+            let bounds_mid = (bounds[0] + bounds[1]) / 2.as_();
 
             let more = u < bounds_mid;
+            let probs = [get_or_zero(level, idx + 0).as_(), get_or_zero(level, idx + 1).as_()];
             out[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out[0], out[1]);
             bounds[more as usize] = bounds_mid;
             idx += (!more) as usize;
@@ -168,13 +168,13 @@ impl<R: Real> Continuous1D for Hierarchical1D<R> {
 }
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Hierarchical2D<R: Real> {
-    levels: Box<[Data2D<R>]>,
+pub struct Hierarchical2D<W> {
+    levels: Box<[Data2D<W>]>,
 }
 
-impl<R: Real> Hierarchical2D<R> {
-    fn integral(&self) -> R {
-        let mut sum = R::zero();
+impl<W: Num + Copy> Hierarchical2D<W> {
+    fn integral(&self) -> W {
+        let mut sum = W::zero();
         for l in self.levels.first().unwrap().iter().flatten() {
             sum = sum + *l;
         }
@@ -182,10 +182,10 @@ impl<R: Real> Hierarchical2D<R> {
     }
 }
 
-impl<R: Real> Discrete2D for Hierarchical2D<R> {
-    type Weight = R;
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for Hierarchical2D<W> {
+    type Weight = W;
 
-    fn build(weights: &Data2D<R>) -> Self {
+    fn build(weights: &Data2D<W>) -> Self {
         let max_size = weights.width().max(weights.height());
         let level_count = max_size.next_power_of_two().ilog2() as usize;
         let mut levels = vec![Default::default(); level_count].into_boxed_slice();
@@ -199,7 +199,7 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
             prev_level_idx -= 1;
             nx = nx.div_ceil(2);
             ny = ny.div_ceil(2);
-            let mut level = Data2D::new_same(nx, ny, R::zero());
+            let mut level = Data2D::new_same(nx, ny, W::zero());
             for y in 0..ny {
                 for x in 0..nx {
                     level[y][x] = 
@@ -241,12 +241,12 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
         idx
     }
 
-    fn pdf(&self, [mut u, mut v]: [usize; 2]) -> R {
+    fn pdf(&self, [mut u, mut v]: [usize; 2]) -> W {
         let mut pdf = self.integral();
 
         for (i, level) in self.levels.iter().enumerate().rev() {
             let x = get_or_zero_2d(level, u, v);
-            if x == R::zero() { return R::zero() }
+            if x == W::zero() { return W::zero() }
 
             let ue = if u % 2 == 1 {
                 u - 1 
@@ -281,7 +281,9 @@ impl<R: Real> Discrete2D for Hierarchical2D<R> {
     }
 }
 
-impl<R: Real> Continuous2D for Hierarchical2D<R> {
+impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> for Hierarchical2D<W>
+    where usize: AsPrimitive<R>,
+{
     fn sample_continuous(&self, [mut u, mut v]: [R; 2]) -> [R; 2] {
         let mut idx = [0; 2];
 
@@ -304,8 +306,8 @@ impl<R: Real> Continuous2D for Hierarchical2D<R> {
             idx[1] = idx[1] + idx_y as usize;
         }
         let idx_normalized = [
-            (cast::<usize, R>(idx[0]).unwrap() + u) / cast(self.width()).unwrap(),
-            (cast::<usize, R>(idx[1]).unwrap() + v) / cast(self.height()).unwrap(),
+            (idx[0].as_() + u) / self.width().as_(),
+            (idx[1].as_() + v) / self.height().as_(),
         ];
         idx_normalized
     }
@@ -315,11 +317,11 @@ impl<R: Real> Continuous2D for Hierarchical2D<R> {
         let mut out_v = [R::zero(), R::one()];
         let mut bounds_u = [
             R::zero(),
-            cast::<usize, R>(self.width().next_power_of_two()).unwrap() / cast::<usize, R>(self.width()).unwrap()
+            self.width().next_power_of_two().as_() / self.width().as_(),
         ];
         let mut bounds_v = [
             R::zero(),
-            cast::<usize, R>(self.height().next_power_of_two()).unwrap() / cast::<usize, R>(self.height()).unwrap()
+            self.height().next_power_of_two().as_() / self.height().as_(),
         ];
         let mut idx = [0; 2];
 
@@ -328,12 +330,12 @@ impl<R: Real> Continuous2D for Hierarchical2D<R> {
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
             if level.width() > 1 {
-                let probs = [
-                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-                    get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
-                ];
-                let bounds_mid = (bounds_u[0] + bounds_u[1]) / cast(2).unwrap();
+                let bounds_mid = (bounds_u[0] + bounds_u[1]) / 2.as_();
 
+                let probs = [
+                    (get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)).as_(),
+                    (get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)).as_(),
+                ];
                 let more = u < bounds_mid;
                 out_u[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_u[0], out_u[1]);
                 bounds_u[more as usize] = bounds_mid;
@@ -341,13 +343,13 @@ impl<R: Real> Continuous2D for Hierarchical2D<R> {
             }
 
             if level.height() > 1 {
-                let probs = [
-                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
-                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-                ];
-                let bounds_mid = (bounds_v[0] + bounds_v[1]) / cast(2).unwrap();
+                let bounds_mid = (bounds_v[0] + bounds_v[1]) / 2.as_();
 
                 let more = v < bounds_mid;
+                let probs = [
+                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0).as_(),
+                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 1).as_(),
+                ];
                 out_v[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_v[0], out_v[1]);
                 bounds_v[more as usize] = bounds_mid;
                 idx[1] += (!more) as usize;
@@ -379,7 +381,7 @@ mod tests {
                 dist[j][i] = 2.0;
             }
         }
-        crate::hierarchical::Hierarchical2D::build(&dist);
+        <crate::hierarchical::Hierarchical2D<f64> as Discrete2D<f64>>::build(&dist);
     }
 }
 

@@ -5,7 +5,10 @@ use crate::distribution::{
     Continuous1D,
     Continuous2D,
 };
-use num_traits::cast;
+use num_traits::{
+    real::Real,
+    AsPrimitive,
+};
 
 #[cfg(not(feature = "std"))]
 use alloc::{
@@ -14,12 +17,12 @@ use alloc::{
 };
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Adapter2D<D: Discrete1D> {
+pub struct Adapter2D<D> {
     pub marginal: D,
     pub conditional: Box<[D]>,
 }
 
-impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
+impl<D: Discrete1D<R>, R> Discrete2D<R> for Adapter2D<D> {
     type Weight = D::Weight;
 
     fn build(weights: &Data2D<D::Weight>) -> Self {
@@ -40,7 +43,7 @@ impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
         }
     }
 
-    fn sample(&self, [u, v]: [D::Weight; 2]) -> [usize; 2] {
+    fn sample(&self, [u, v]: [R; 2]) -> [usize; 2] {
         let y = self.marginal.sample(v);
         let x = self.conditional[y].sample(u);
 
@@ -63,18 +66,20 @@ impl<D: Discrete1D> Discrete2D for Adapter2D<D> {
     }
 }
 
-impl<D: Continuous1D> Continuous2D for Adapter2D<D> {
-    fn sample_continuous(&self, [u, v]: [D::Weight; 2]) -> [D::Weight; 2] {
+impl<D: Continuous1D<R>, R: Real + AsPrimitive<usize> + 'static> Continuous2D<R> for Adapter2D<D>
+    where usize: AsPrimitive<R>,
+{
+    fn sample_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
         let y = self.marginal.sample_continuous(v);
-        let offset_y = cast::<D::Weight, usize>(y * cast(self.height()).unwrap()).unwrap();
+        let offset_y = (y * <usize as AsPrimitive<R>>::as_(self.height())).as_();
         let x = self.conditional[offset_y].sample_continuous(u);
 
         [x, y]
     }
 
-    fn inverse_continuous(&self, [u, v]: [D::Weight; 2]) -> [D::Weight; 2] {
+    fn inverse_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
         let y = self.marginal.inverse_continuous(v);
-        let offset_y = cast::<D::Weight, usize>(y * cast(self.height()).unwrap()).unwrap();
+        let offset_y = (y * <usize as AsPrimitive<R>>::as_(self.height())).as_();
         let x = self.conditional[offset_y].inverse_continuous(u);
 
         [x, y]

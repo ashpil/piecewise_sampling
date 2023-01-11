@@ -26,9 +26,9 @@ fn main() {
     }).unwrap().layer_data.channel_data.pixels;
 
 
-    fn visualize_warping<D: Continuous2D<Weight=f32>>(out_name: &str, weights: &Data2D<f32>) {
+    fn visualize_warping<D: Continuous2D<f32, Weight=f32>>(out_name: &str, weights: &Data2D<f32>) {
         let sampler = D::build(weights);
-        let warping = sampler.visualize_warping(16);
+        let warping = discrete_sampling::distribution::visualize_warping(&sampler, 16);
         write_rgb_file(out_name, warping.width(), warping.height(), |x, y| {
             let p = warping[y][x];
             (p[0], p[1], p[2])

@@ -3,8 +3,9 @@ use crate::distribution::{
     Continuous1D,
 };
 use num_traits::{
+    Num,
     real::Real,
-    cast,
+    AsPrimitive,
 };
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
@@ -12,15 +13,15 @@ use alloc::boxed::Box;
 pub type Inversion2D<R> = crate::Adapter2D<Inversion1D<R>>;
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-pub struct Inversion1D<R: Real> {
-    pub cdf: Box<[R]>,
+pub struct Inversion1D<W> {
+    pub cdf: Box<[W]>,
 }
 
-impl<R: Real> Discrete1D for Inversion1D<R> {
-    type Weight = R;
+impl<W: Num + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for Inversion1D<W> {
+    type Weight = W;
 
-    fn build(weights: &[R]) -> Self {
-        let mut cdf = core::iter::once(R::zero()).chain(weights.iter().cloned()).collect::<Box<[R]>>();
+    fn build(weights: &[W]) -> Self {
+        let mut cdf = core::iter::once(W::zero()).chain(weights.iter().cloned()).collect::<Box<[W]>>();
 
         for i in 1..cdf.len() {
             cdf[i] = cdf[i - 1] + cdf[i];
@@ -32,16 +33,16 @@ impl<R: Real> Discrete1D for Inversion1D<R> {
     }
 
     fn sample(&self, u: R) -> usize {
-        let point = u * self.integral();
-        let offset = self.cdf.partition_point(|p| *p <= point) - 1;
+        let point = u * self.integral().as_();
+        let offset = self.cdf.partition_point(|p| p.as_() <= point) - 1;
         offset
     }
 
-    fn pdf(&self, u: usize) -> R {
+    fn pdf(&self, u: usize) -> W {
         self.cdf[u + 1] - self.cdf[u]
     }
 
-    fn integral(&self) -> R {
+    fn integral(&self) -> W {
         *self.cdf.last().unwrap()
     }
 
@@ -50,18 +51,20 @@ impl<R: Real> Discrete1D for Inversion1D<R> {
     }
 }
 
-impl<R: Real> Continuous1D for Inversion1D<R> {
+impl<W: Num + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'static> Continuous1D<R> for Inversion1D<W>
+    where usize: AsPrimitive<R>,
+{
     fn sample_continuous(&self, u: R) -> R {
         let offset = self.sample(u);
-        let du = (u * self.integral() - self.cdf[offset]) / (self.cdf[offset + 1] - self.cdf[offset]);
-        (cast::<usize, R>(offset).unwrap() + du) / cast(self.size()).unwrap()
+        let du = (u * self.integral().as_() - self.cdf[offset].as_()) / (self.cdf[offset + 1].as_() - self.cdf[offset].as_());
+        (offset.as_() + du) / self.size().as_()
     }
 
     fn inverse_continuous(&self, u: R) -> R {
-        let scaled: R = cast::<usize, R>(self.size()).unwrap() * u;
-        let idx: usize = cast(scaled).unwrap();
-        let delta = scaled - cast(idx).unwrap();
-        crate::utils::lerp(delta, self.cdf[idx], self.cdf[idx + 1]) / self.integral()
+        let scaled: R = self.size().as_() * u;
+        let idx: usize = scaled.as_();
+        let delta = scaled - idx.as_();
+        crate::utils::lerp(delta, self.cdf[idx].as_(), self.cdf[idx + 1].as_()) / self.integral().as_()
     }
 }
 
