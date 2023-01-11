@@ -51,6 +51,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
             assert!(n < 2_000_000, "Alias1D on f32s not reliable for distributions with more than 2,000,000 elements");
         }
 
+        assert!(n < u32::MAX as usize, "Current Alias1D implementation doesn't work for distributions with more than or equal to u32::MAX elements");
+
         let weight_sum = if is_f32 {
             utils::kahan_sum(weights.iter().cloned())
         } else {
@@ -63,43 +65,56 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + AsPrimitive<usize> + 'stati
 
         let mut entries = vec![Entry { select: W::zero(), alias: 0 }; n].into_boxed_slice();
 
-        let mut smalls = Vec::new();
-        let mut larges = Vec::new();
+        let mut small_head = u32::MAX;
+        let mut large_head = u32::MAX;
 
         for (i, weight) in weights.iter().enumerate() {
             let adjusted_weight = *weight * n.as_();
             entries[i].select = adjusted_weight;
             if adjusted_weight < weight_sum {
-                smalls.push(i as u32);
+                entries[i].alias = small_head;
+                small_head = i as u32;
             } else {
-                larges.push(i as u32);
+                entries[i].alias = large_head;
+                large_head = i as u32;
             }
         }
 
-        while !smalls.is_empty() && !larges.is_empty() {
-            let small = smalls.pop().unwrap();
-            let large = larges.pop().unwrap();
+        while small_head != u32::MAX && large_head != u32::MAX {
+            let small = small_head as usize;
+            small_head = entries[small].alias;
 
-            entries[small as usize].alias = large;
-            entries[large as usize].select = (entries[large as usize].select + entries[small as usize].select) - weight_sum;
+            let large = large_head as usize;
+            large_head = entries[large].alias;
 
-            if entries[large as usize].select < weight_sum {
-                smalls.push(large);
+            entries[small].alias = large as u32;
+            entries[large].select = (entries[large].select + entries[small].select) - weight_sum;
+
+            if entries[large].select < weight_sum {
+                entries[large].alias = small_head;
+                small_head = large as u32;
             } else {
-                larges.push(large);
+                entries[large].alias = large_head;
+                large_head = large as u32;
             }
         }
 
         // the select for entries in `large` should already all be >= sum, so 
         // we don't need to update them here
-        // while let Some(g) = large.pop() {
-        //     entries[g as usize].select = weight_sum;
+        // while large_head != u32::MAX {
+        //     let large = large_head as usize;
+        //     large_head = entries[large].alias;
+
+        //     entries[large].select = weight_sum;
         // }
 
         // these are actually large but are in small due to float error
         // they are currently slightly less than the weight sum, we need to make sure they're the weight sum
-        while let Some(small) = smalls.pop() {
-            entries[small as usize].select = weight_sum;
+        while small_head != u32::MAX {
+            let small = small_head as usize;
+            small_head = entries[small].alias;
+
+            entries[small].select = weight_sum;
         }
 
         Self {
