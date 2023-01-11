@@ -25,7 +25,7 @@ use alloc::{
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
-fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights: [N; 2], rand: &mut R) -> (R, u8) {
+fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights: [N; 2], rand: &mut R) -> u8 {
     let weight_sum = weights[0] + weights[1];
     let weight_1_r = weights[0].as_();
     let weight_2_r = weights[1].as_();
@@ -33,10 +33,10 @@ fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights
     let new_rand: R = *rand * weight_sum_r;
     if new_rand < weight_1_r {
         *rand = new_rand / weight_1_r;
-        (weight_1_r / weight_sum_r, 0)
+        0
     } else {
         *rand = (new_rand - weight_1_r) / weight_2_r;
-        (weight_2_r / weight_sum_r, 1)
+        1
     }
 }
 
@@ -90,8 +90,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for 
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            let (_, level_idx) = select_remap(probs, &mut u);
-            idx = idx + level_idx as usize;
+            idx = idx + select_remap(probs, &mut u) as usize;
         }
         idx
     }
@@ -140,8 +139,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> fo
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            let (_, level_idx) = select_remap(probs, &mut u);
-            idx = idx + level_idx as usize;
+            idx = idx + select_remap(probs, &mut u) as usize;
         }
         (idx.as_() + u) / self.size().as_()
     }
@@ -222,15 +220,13 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            let (_, idx_x) = select_remap(probs_x, &mut u);
-            idx[0] = idx[0] + idx_x as usize;
+            idx[0] = idx[0] + select_remap(probs_x, &mut u) as usize;
 
             let probs_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            let (_, idx_y) = select_remap(probs_y, &mut v);
-            idx[1] = idx[1] + idx_y as usize;
+            idx[1] = idx[1] + select_remap(probs_y, &mut v) as usize;
         }
         idx
     }
@@ -299,15 +295,13 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            let (_, idx_x) = select_remap(probs_x, &mut u);
-            idx[0] = idx[0] + idx_x as usize;
+            idx[0] = idx[0] + select_remap(probs_x, &mut u) as usize;
 
             let probs_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            let (_, idx_y) = select_remap(probs_y, &mut v);
-            idx[1] = idx[1] + idx_y as usize;
+            idx[1] = idx[1] + select_remap(probs_y, &mut v) as usize;
         }
         let idx_normalized = [
             (idx[0].as_() + u) / self.width().as_(),
