@@ -1,11 +1,11 @@
 use exr::prelude::*;
 use std::time::Instant;
 
-use pdf_maker::Data2D;
-use pdf_maker::Alias2D;
-use pdf_maker::Inversion2D;
-use pdf_maker::Hierarchical2D;
-use pdf_maker::distribution::Discrete2D;
+use discrete_sampling::Data2D;
+use discrete_sampling::Alias2D;
+use discrete_sampling::Inversion2D;
+use discrete_sampling::Hierarchical2D;
+use discrete_sampling::distribution::Discrete2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
     r * 0.2126 + g * 0.7152 + b * 0.0722

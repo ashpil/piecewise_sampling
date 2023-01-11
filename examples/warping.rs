@@ -1,10 +1,10 @@
 use exr::prelude::*;
 
-use pdf_maker::Data2D;
-use pdf_maker::ContinuousAlias2D;
-use pdf_maker::Inversion2D;
-use pdf_maker::Hierarchical2D;
-use pdf_maker::distribution::Continuous2D;
+use discrete_sampling::Data2D;
+use discrete_sampling::ContinuousAlias2D;
+use discrete_sampling::Inversion2D;
+use discrete_sampling::Hierarchical2D;
+use discrete_sampling::distribution::Continuous2D;
 
 fn luminance([r, g, b]: [f32; 3]) -> f32 {
     r * 0.2126 + g * 0.7152 + b * 0.0722
