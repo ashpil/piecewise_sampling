@@ -281,7 +281,7 @@ impl<W: Real + AsPrimitive<usize>> Continuous1D<W> for ContinuousAlias1D<W>
     }
 
     // O(n) at worst
-    fn inverse_continuous(&self, u: W) -> W {
+    fn invert_continuous(&self, u: W) -> W {
         let scaled: W = self.entries.len().as_() * u;
         let initial_index: usize = scaled.as_();
         let initial_entry = self.entries[initial_index];

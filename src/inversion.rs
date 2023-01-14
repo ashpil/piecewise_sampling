@@ -63,7 +63,7 @@ impl<W: Num + AsPrimitive<R> + PartialOrd, R: Real + AsPrimitive<W> + AsPrimitiv
         (offset.as_() + du) / self.size().as_()
     }
 
-    fn inverse_continuous(&self, u: R) -> R {
+    fn invert_continuous(&self, u: R) -> R {
         let scaled: R = self.size().as_() * u;
         let idx: usize = scaled.as_();
         let delta = scaled - idx.as_();

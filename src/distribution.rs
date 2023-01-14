@@ -34,7 +34,7 @@ pub trait Continuous1D<R>: Discrete1D<R> {
     fn sample_continuous(&self, u: R) -> R;
 
     // inverse of above
-    fn inverse_continuous(&self, u: R) -> R;
+    fn invert_continuous(&self, u: R) -> R;
 }
 
 // 2D piecewise constant distribution
@@ -79,7 +79,7 @@ pub trait Continuous2D<R>: Discrete2D<R> {
     fn sample_continuous(&self, uv: [R; 2]) -> [R; 2];
 
     // inverse of above
-    fn inverse_continuous(&self, uv: [R; 2]) -> [R; 2];
+    fn invert_continuous(&self, uv: [R; 2]) -> [R; 2];
 }
 
 pub fn visualize_warping<D: Continuous2D<R>, R: Real + AsPrimitive<usize> + 'static>(distr: &D, block_count: usize) -> Data2D<[f32; 3]>
@@ -93,7 +93,7 @@ pub fn visualize_warping<D: Continuous2D<R>, R: Real + AsPrimitive<usize> + 'sta
                 (i.as_() + 0.5.as_()) / distr.width().as_(),
                 (j.as_() + 0.5.as_()) / distr.height().as_(),
             ];
-            let [x, y] = distr.inverse_continuous(input);
+            let [x, y] = distr.invert_continuous(input);
             let x_scaled = (x * <usize as AsPrimitive<R>>::as_(block_count)).as_();
             let y_scaled = (y * <usize as AsPrimitive<R>>::as_(block_count)).as_();
             let tile = (x_scaled + block_count * y_scaled) as u64 + 1;
@@ -150,7 +150,7 @@ pub fn test_inv_1d<R: Real + 'static, D: Continuous1D<R>>(weights: &[D::Weight],
     for i in 0..sample_count {
         let x = i.as_() / sample_count.as_();
         let y = dist.sample_continuous(x);
-        let inv = dist.inverse_continuous(y);
+        let inv = dist.invert_continuous(y);
         assert!((inv - x).abs() < 0.01f64.as_(), "{} original not equal to {} inverse of sample {}", x, inv, y);
     }
 }

@@ -144,7 +144,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> fo
         (idx.as_() + u) / self.size().as_()
     }
 
-    fn inverse_continuous(&self, u: R) -> R {
+    fn invert_continuous(&self, u: R) -> R {
         let mut out = [R::zero(), R::one()];
         let mut bounds = [
             R::zero(),
@@ -310,7 +310,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
         idx_normalized
     }
 
-    fn inverse_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
+    fn invert_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
         let mut out_u = [R::zero(), R::one()];
         let mut out_v = [R::zero(), R::one()];
         let mut bounds_u = [

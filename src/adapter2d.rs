@@ -85,10 +85,10 @@ impl<D: Continuous1D<R>, R: Real + AsPrimitive<usize> + 'static> Continuous2D<R>
         [x, y]
     }
 
-    fn inverse_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
-        let y = self.marginal.inverse_continuous(v);
+    fn invert_continuous(&self, [u, v]: [R; 2]) -> [R; 2] {
+        let y = self.marginal.invert_continuous(v);
         let offset_y = (y * <usize as AsPrimitive<R>>::as_(self.height())).as_();
-        let x = self.conditional[offset_y].inverse_continuous(u);
+        let x = self.conditional[offset_y].invert_continuous(u);
 
         [x, y]
     }
