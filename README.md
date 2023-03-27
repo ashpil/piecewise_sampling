@@ -10,4 +10,8 @@ Currently supporting:
 Other references:
   * [Visualizing Warping Strategies for Sampling Environment Map Lights](https://pharr.org/matt/blog/2019/06/05/visualizing-env-light-warpings), *Matt Pharr's blog*
 
+### License
+
+Your choice of MIT or BSD0.
+
 [^1]: Technically, step functions rather than arbitrary discrete distributions
