@@ -22,7 +22,9 @@ fn main() {
         std::process::exit(1);
     }
 
-    let source_image = read_first_rgba_layer_from_file(args[1].clone(), |resolution, _| {
+    let source_image_path = args[1].clone();
+
+    let source_image = read_first_rgba_layer_from_file(source_image_path, |resolution, _| {
         let width = resolution.width();
         let height = resolution.height();
         Data2D::new_same(width, height, [0.0, 0.0, 0.0])
@@ -37,7 +39,7 @@ fn main() {
         }
     }
 
-    let sample_count = 65_536;
+    let sample_count = source_image.width() + source_image.height(); // empirically seems to be a reasonable default
     let stratify = true;
     let rands: Vec<[f32; 2]> = if stratify {
         let mut rands = Vec::with_capacity(sample_count);

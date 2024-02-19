@@ -2,8 +2,11 @@
 
 #![cfg_attr(test, feature(sort_floats))]
 #![feature(int_roundings)]
-#![feature(core_intrinsics)]
 #![feature(min_specialization)]
+
+// for fast math (SIMD float sum)
+#![allow(internal_features)]
+#![feature(core_intrinsics)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
