@@ -1,5 +1,10 @@
+#![feature(iter_array_chunks)]
+
 use exr::prelude::*;
 use std::time::Instant;
+
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 use discrete_sampling::Data2D;
 use discrete_sampling::Alias2D;
@@ -26,32 +31,50 @@ fn main() {
         buffer[pos.y()][pos.x()] = luminance([r, g, b]);
     }).unwrap().layer_data.channel_data.pixels;
 
-    fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>) {
+    let sample_count_per_dimension = 1000;
+    let total_sample_count = sample_count_per_dimension * sample_count_per_dimension;
+    let rands: Vec<[f32; 2]> = StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(total_sample_count * 2).array_chunks::<2>().collect();
+
+    fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>, sample_count_per_dimension: usize, rands: &[[f32; 2]]) {
         println!("{} method", name);
+
+        let total_sample_count = sample_count_per_dimension * sample_count_per_dimension;
 
         let sampler = {
             let preprocess_start = Instant::now();
             let sampler = D::build(weights);
-            println!("  {} seconds for build", preprocess_start.elapsed().as_secs_f32());
+            println!("  {: >3}ms for build", preprocess_start.elapsed().as_millis());
             sampler
         };
 
+        // TODO: investigate why black_box only make a noticable difference for alias
         {
             let sampling_start = Instant::now();
-            let size = 1000;
-            for j in 0..size {
-                for i in 0..size {
-                    let input = [(i as f32) / size as f32, (j as f32) / size as f32];
+            for j in 0..sample_count_per_dimension {
+                for i in 0..sample_count_per_dimension {
+                    let input = std::hint::black_box([(i as f32) / sample_count_per_dimension as f32, (j as f32) / sample_count_per_dimension as f32]);
                     let output = sampler.sample(input);
-                    std::hint::black_box(output); // TODO: why do we get a big perf difference with our without this for alias only?
+                    std::hint::black_box(output);
                 }
             }
-            println!("  {} seconds for sampling", sampling_start.elapsed().as_secs_f32());
+            let elapsed = sampling_start.elapsed();
+            println!("  {: >3}ns per sample for coherent sampling", elapsed.as_nanos() / total_sample_count as u128);
+        }
+
+        {
+            let sampling_start = Instant::now();
+            for rand in rands {
+                let input = std::hint::black_box(*rand);
+                let output = sampler.sample(input);
+                std::hint::black_box(output);
+            }
+            let elapsed = sampling_start.elapsed();
+            println!("  {: >3}ns per sample for incoherent sampling", elapsed.as_nanos() / total_sample_count as u128);
         }
     }
 
-    sample_perf::<Inversion2D<f32>>("Inversion", &density_image);
-    sample_perf::<Alias2D<f32>>("Alias", &density_image);
-    sample_perf::<Hierarchical2D<f32>>("Hierarchical", &density_image);
+    sample_perf::<Inversion2D<f32>>("Inversion", &density_image, sample_count_per_dimension, &rands);
+    sample_perf::<Alias2D<f32>>("Alias", &density_image, sample_count_per_dimension, &rands);
+    sample_perf::<Hierarchical2D<f32>>("Hierarchical", &density_image, sample_count_per_dimension, &rands);
 }
 

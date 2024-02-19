@@ -51,12 +51,12 @@ fn main() {
         StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(sample_count * 2).array_chunks::<2>().collect()
     };
 
-    fn demo_distribution<D: Discrete2D<f32, Weight=f32>>(out_name: &str, source_image: &Data2D<[f32; 3]>, weights: &Data2D<f32>, rands: &Vec<[f32; 2]>) {
+    fn demo_distribution<D: Discrete2D<f32, Weight=f32>>(out_name: &str, source_image: &Data2D<[f32; 3]>, weights: &Data2D<f32>, rands: &[[f32; 2]]) {
         let sampler = D::build(weights);
 
         let mut demo_image = source_image.clone();
 
-        sampler.fill_demo_image(&mut demo_image, rands.clone().into_iter());
+        sampler.fill_demo_image(&mut demo_image, rands.iter().cloned());
 
         write_rgb_file(out_name, demo_image.width(), demo_image.height(), |x, y| {
             let p = demo_image[y][x];
