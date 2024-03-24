@@ -106,25 +106,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for 
 }
 
 impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1DPdf<R> for Hierarchical1D<W> {
-    fn pdf(&self, mut u: usize) -> W {
-        let mut pdf = self.integral();
-
-        for level in self.levels.iter().rev() {
-            let v = get_or_zero(level, u);
-
-            if v == W::zero() { return W::zero() }
-
-            let ue = if u % 2 == 1 {
-                u - 1 
-            } else {
-                u
-            };
-            pdf = pdf * v / (get_or_zero(level, ue) + get_or_zero(level, ue + 1));
-
-            u /= 2;
-        }
-
-        pdf
+    fn pdf(&self, u: usize) -> W {
+        self.levels.first().unwrap()[u]
     }
 }
 
@@ -249,35 +232,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
 }
 
 impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2DPdf<R> for Hierarchical2D<W> {
-    fn pdf(&self, [mut u, mut v]: [usize; 2]) -> W {
-        let mut pdf = self.integral();
-
-        for (i, level) in self.levels.iter().enumerate().rev() {
-            let x = get_or_zero_2d(level, u, v);
-            if x == W::zero() { return W::zero() }
-
-            let ue = if u % 2 == 1 {
-                u - 1 
-            } else {
-                u
-            };
-            let ve = if v % 2 == 1 {
-                v - 1 
-            } else {
-                v
-            };
-            pdf = pdf * x / (
-                get_or_zero_2d(level, ue + 0, ve + 0) +
-                get_or_zero_2d(level, ue + 1, ve + 0) +
-                get_or_zero_2d(level, ue + 0, ve + 1) +
-                get_or_zero_2d(level, ue + 1, ve + 1)
-            );
-
-            if i > 0 && self.levels[i - 1].width() < self.levels[i].width() { u /= 2 }
-            if i > 0 && self.levels[i - 1].height() < self.levels[i].height() { v /= 2 }
-        }
-
-        pdf
+    fn pdf(&self, [u, v]: [usize; 2]) -> W {
+        self.levels.first().unwrap()[u][v]
     }
 }
 
