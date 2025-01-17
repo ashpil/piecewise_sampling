@@ -31,14 +31,13 @@ fn main() {
         buffer[pos.y()][pos.x()] = luminance([r, g, b]);
     }).unwrap().layer_data.channel_data.pixels;
 
-    let sample_count_per_dimension = 1000;
-    let total_sample_count = sample_count_per_dimension * sample_count_per_dimension;
-    let rands: Vec<[f32; 2]> = StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(total_sample_count * 2).array_chunks::<2>().collect();
-
-    fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>, sample_count_per_dimension: usize, rands: &[[f32; 2]]) {
+    fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>) {
         println!("{} method", name);
 
+        let sample_count_per_dimension = 1000;
         let total_sample_count = sample_count_per_dimension * sample_count_per_dimension;
+        let incoherent: Vec<[f32; 2]> = StdRng::seed_from_u64(0).sample_iter(rand::distributions::Uniform::new(0.0, 1.0)).take(total_sample_count * 2).array_chunks::<2>().collect();
+        let coherent: Vec<[f32; 2]> = (0..sample_count_per_dimension).map(|j| (0..sample_count_per_dimension).map(move |i| [(i as f32) / sample_count_per_dimension as f32, (j as f32) / sample_count_per_dimension as f32])).flatten().collect();
 
         let sampler = {
             let preprocess_start = Instant::now();
@@ -50,12 +49,10 @@ fn main() {
         // TODO: investigate why black_box only make a noticable difference for alias
         {
             let sampling_start = Instant::now();
-            for j in 0..sample_count_per_dimension {
-                for i in 0..sample_count_per_dimension {
-                    let input = std::hint::black_box([(i as f32) / sample_count_per_dimension as f32, (j as f32) / sample_count_per_dimension as f32]);
-                    let output = sampler.sample(input);
-                    std::hint::black_box(output);
-                }
+            for value in coherent {
+                let input = std::hint::black_box(value);
+                let output = sampler.sample(input);
+                std::hint::black_box(output);
             }
             let elapsed = sampling_start.elapsed();
             println!("  {: >3}ns per sample for coherent sampling", elapsed.as_nanos() / total_sample_count as u128);
@@ -63,8 +60,8 @@ fn main() {
 
         {
             let sampling_start = Instant::now();
-            for rand in rands {
-                let input = std::hint::black_box(*rand);
+            for value in incoherent {
+                let input = std::hint::black_box(value);
                 let output = sampler.sample(input);
                 std::hint::black_box(output);
             }
@@ -73,8 +70,8 @@ fn main() {
         }
     }
 
-    sample_perf::<Inversion2D<f32>>("Inversion", &density_image, sample_count_per_dimension, &rands);
-    sample_perf::<Alias2D<f32>>("Alias", &density_image, sample_count_per_dimension, &rands);
-    sample_perf::<Hierarchical2D<f32>>("Hierarchical", &density_image, sample_count_per_dimension, &rands);
+    sample_perf::<Inversion2D<f32>>("Inversion", &density_image);
+    sample_perf::<Alias2D<f32>>("Alias", &density_image);
+    sample_perf::<Hierarchical2D<f32>>("Hierarchical", &density_image);
 }
 
