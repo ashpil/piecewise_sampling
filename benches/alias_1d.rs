@@ -38,7 +38,7 @@ fn alias_1d_sample_incoherent(c: &mut Criterion) {
     let mut rng = StdRng::seed_from_u64(0);
     c.bench_function("alias_1d_sample_incoherent", |b| b.iter(|| {
         for _ in 0..1000 {
-            let i = rng.gen::<f32>();
+            let i = rng.r#gen::<f32>();
             dist.sample(black_box(i));
         }
     }));

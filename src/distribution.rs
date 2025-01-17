@@ -120,18 +120,18 @@ pub fn chisq_distribution_1d<D: Discrete1D<f64>>(expected: &[D::Weight], sample_
     let mut rng = StdRng::seed_from_u64(0);
 
     for _ in 0..sample_count {
-        let idx = dist.sample(rng.gen::<f64>());
+        let idx = dist.sample(rng.r#gen::<f64>());
         hist[idx] += 1;
     }
 
     for (weight, obs) in hist.into_iter().zip(observed.iter_mut()) {
-        *obs = ((*weight as f64) / (sample_count as f64)) * dist.integral().as_();
+        *obs = ((weight as f64) / (sample_count as f64)) * dist.integral().as_();
     }
 
     let mut chsq = 0.0;
     let dof = expected.len() - 1;
     for (obs, exp) in observed.into_iter().zip(expected.into_iter()) {
-        let diff = *obs - exp.as_();
+        let diff = obs - exp.as_();
         chsq += diff * diff / exp.as_();
     }
 
