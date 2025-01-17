@@ -10,10 +10,10 @@ std = []
 
 [dependencies]
 num-traits = { version = "0.2", default-features = false, features = ["libm" ] }
-rkyv = { version = "0.7", default-features = false, features = ["size_32", "alloc" ], optional = true }
+rkyv = { version = "0.8", default-features = false, features = ["alloc" ], optional = true }
 
 [dev-dependencies]
-statrs = "0.16"
+statrs = "0.18"
 criterion = "0.5"
 exr = "1.72"
 sobol_burley = "0.5"
