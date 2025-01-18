@@ -29,13 +29,13 @@ fn main() {
         let height = resolution.height();
         Data2D::new_same(width, height, [0.0, 0.0, 0.0])
     }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
-        buffer[pos.y()][pos.x()] = [r, g, b];
+        buffer[[pos.x(), pos.y()]] = [r, g, b];
     }).unwrap().layer_data.channel_data.pixels;
 
     let mut density_image = Data2D::new_same(source_image.width(), source_image.height(), 0.0);
     for (row_idx, row) in source_image.iter().enumerate() {
         for (col_idx, pixel) in row.iter().enumerate() {
-            density_image[row_idx][col_idx] = luminance(*pixel);
+            density_image[[col_idx, row_idx]] = luminance(*pixel);
         }
     }
 
@@ -59,7 +59,7 @@ fn main() {
         sampler.fill_demo_image(&mut demo_image, rands.iter().cloned());
 
         write_rgb_file(out_name, demo_image.width(), demo_image.height(), |x, y| {
-            let p = demo_image[y][x];
+            let p = demo_image[[x, y]];
             (p[0], p[1], p[2])
         }).unwrap();
         println!("Wrote {}", out_name);

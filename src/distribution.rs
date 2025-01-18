@@ -61,7 +61,7 @@ pub trait Discrete2D<R> {
                 for js in -1..1 {
                     let j = (y as i32 + js).clamp(0, (demo.height() - 1) as i32) as usize;
                     let i = (x as i32 + is).clamp(0, (demo.width() - 1) as i32) as usize;
-                    demo[j][i] = [1000.0, 0.0, 0.0];
+                    demo[[i, j]] = [1000.0, 0.0, 0.0];
                 }
             }
         }
@@ -97,7 +97,7 @@ pub fn visualize_warping<D: Continuous2D<R>, R: Real + AsPrimitive<usize> + 'sta
             let x_scaled = (x * <usize as AsPrimitive<R>>::as_(block_count)).as_();
             let y_scaled = (y * <usize as AsPrimitive<R>>::as_(block_count)).as_();
             let tile = (x_scaled + block_count * y_scaled) as u64 + 1;
-            out[j][i] = crate::utils::u64_to_color(tile);
+            out[[i, j]] = crate::utils::u64_to_color(tile);
         }
     }
     out
@@ -151,7 +151,7 @@ pub fn chisq_distribution_2d<D: Discrete2D<f64>>(expected: &Data2D<D::Weight>, s
 
     for _ in 0..sample_count {
         let idx = dist.sample([rng.r#gen::<f64>(), rng.r#gen::<f64>()]);
-        hist[idx[1]][idx[0]] += 1;
+        hist[idx] += 1;
     }
 
     for (weight, obs) in hist.iter().flatten().zip(observed.iter_mut().flatten()) {
@@ -243,10 +243,10 @@ macro_rules! distribution_2d_tests {
                 let width = 2;
                 let height = 2;
                 let mut distr = crate::data2d::Data2D::new_same(width, height, 0);
-                distr[0][0] = 1;
-                distr[0][1] = 1;
-                distr[1][0] = 2;
-                distr[1][1] = 4;
+                distr[[0, 0]] = 1;
+                distr[[1, 0]] = 1;
+                distr[[0, 1]] = 2;
+                distr[[1, 1]] = 4;
                 chisq_distribution_2d::<Dist<usize>>(&distr, 10_000);
             }
 
@@ -262,7 +262,7 @@ macro_rules! distribution_2d_tests {
                 let mut distr = crate::data2d::Data2D::new_same(width, height, 0);
                 for j in 0..height {
                     for i in 0..width {
-                        distr[j][i] = height * width;
+                        distr[[i, j]] = height * width;
                     }
                 }
                 chisq_distribution_2d::<Dist<usize>>(&distr, 100_000);

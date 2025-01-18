@@ -34,17 +34,17 @@ impl<T: Clone> Data2D<T> {
     }
 }
 
-impl<T> core::ops::Index<usize> for Data2D<T> {
-    type Output = [T];
+impl<T> core::ops::Index<[usize; 2]> for Data2D<T> {
+    type Output = T;
 
-    fn index(&self, idx: usize) -> &Self::Output {
-        &self.buffer[idx * self.width..(idx + 1) * self.width]
+    fn index(&self, idx: [usize; 2]) -> &Self::Output {
+        &self.buffer[idx[1] * self.width + idx[0]]
     }
 }
 
-impl<T> core::ops::IndexMut<usize> for Data2D<T> {
-    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-        &mut self.buffer[idx * self.width..(idx + 1) * self.width]
+impl<T> core::ops::IndexMut<[usize; 2]> for Data2D<T> {
+    fn index_mut(&mut self, idx: [usize; 2]) -> &mut Self::Output {
+        &mut self.buffer[idx[1] * self.width + idx[0]]
     }
 }
 
@@ -69,8 +69,8 @@ impl<T> Data2D<T> {
         self.buffer.chunks_exact_mut(self.width)
     }
 
-    pub fn get(&self, idx: usize) -> Option<&[T]> {
-        self.buffer.get(idx * self.width..(idx + 1) * self.width)
+    pub fn get(&self, idx: [usize; 2]) -> Option<&T> {
+        self.buffer.get(idx[1] * self.width..(idx[1] + 1) * self.width).and_then(|s| s.get(idx[0]))
     }
 }
 

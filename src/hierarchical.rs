@@ -44,8 +44,8 @@ fn get_or_zero<Z: Zero + Copy>(v: &[Z], idx: usize) -> Z {
     v.get(idx).copied().unwrap_or(Z::zero())
 }
 
-fn get_or_zero_2d<Z: Zero + Copy>(v: &Data2D<Z>, x: usize, y: usize) -> Z {
-    v.get(y).and_then(|s| s.get(x)).copied().unwrap_or(Z::zero())
+fn get_or_zero_2d<Z: Zero + Copy>(v: &Data2D<Z>, idx: [usize; 2]) -> Z {
+    v.get(idx).copied().unwrap_or(Z::zero())
 }
 
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
@@ -177,11 +177,11 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             let mut level = Data2D::new_same(nx, ny, W::zero());
             for y in 0..ny {
                 for x in 0..nx {
-                    level[y][x] = 
-                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 0) +
-                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 0) +
-                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 1) +
-                        get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 1);
+                    level[[x, y]] = 
+                        get_or_zero_2d(&levels[prev_level_idx], [2 * x + 0, 2 * y + 0]) +
+                        get_or_zero_2d(&levels[prev_level_idx], [2 * x + 1, 2 * y + 0]) +
+                        get_or_zero_2d(&levels[prev_level_idx], [2 * x + 0, 2 * y + 1]) +
+                        get_or_zero_2d(&levels[prev_level_idx], [2 * x + 1, 2 * y + 1]);
                 }
             }
             levels[prev_level_idx - 1] = level;
@@ -200,8 +200,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
             let weights = [
-                [get_or_zero_2d(level, idx[0] + 0, idx[1] + 0), get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)],
-                [get_or_zero_2d(level, idx[0] + 1, idx[1] + 0), get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)],
+                [get_or_zero_2d(level, [idx[0] + 0, idx[1] + 0]), get_or_zero_2d(level, [idx[0] + 0, idx[1] + 1])],
+                [get_or_zero_2d(level, [idx[0] + 1, idx[1] + 0]), get_or_zero_2d(level, [idx[0] + 1, idx[1] + 1])],
             ];
 
             let weights_x = [weights[0][0] + weights[0][1], weights[1][0] + weights[1][1]];
@@ -235,7 +235,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
 
 impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2DPdf<R> for Hierarchical2D<W> {
     fn pdf(&self, [u, v]: [usize; 2]) -> W {
-        self.levels.first().unwrap()[u][v]
+        self.levels.first().unwrap()[[u, v]]
     }
 }
 
@@ -250,8 +250,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
             let weights = [
-                [get_or_zero_2d(level, idx[0] + 0, idx[1] + 0), get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)],
-                [get_or_zero_2d(level, idx[0] + 1, idx[1] + 0), get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)],
+                [get_or_zero_2d(level, [idx[0] + 0, idx[1] + 0]), get_or_zero_2d(level, [idx[0] + 0, idx[1] + 1])],
+                [get_or_zero_2d(level, [idx[0] + 1, idx[1] + 0]), get_or_zero_2d(level, [idx[0] + 1, idx[1] + 1])],
             ];
 
             let weights_x = [weights[0][0] + weights[0][1], weights[1][0] + weights[1][1]];
@@ -291,8 +291,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
                 let bounds_mid = (bounds_u[0] + bounds_u[1]) / 2.as_();
 
                 let weights = [
-                    (get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)).as_(),
-                    (get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)).as_(),
+                    (get_or_zero_2d(level, [idx[0] + 0, idx[1] + 0]) + get_or_zero_2d(level, [idx[0] + 0, idx[1] + 1])).as_(),
+                    (get_or_zero_2d(level, [idx[0] + 1, idx[1] + 0]) + get_or_zero_2d(level, [idx[0] + 1, idx[1] + 1])).as_(),
                 ];
                 let more = u < bounds_mid;
                 out_u[more as usize] = lerp(weights[0] / (weights[0] + weights[1]), out_u[0], out_u[1]);
@@ -305,8 +305,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
 
                 let more = v < bounds_mid;
                 let weights = [
-                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 0).as_(),
-                    get_or_zero_2d(level, idx[0] + 0, idx[1] + 1).as_(),
+                    get_or_zero_2d(level, [idx[0] + 0, idx[1] + 0]).as_(),
+                    get_or_zero_2d(level, [idx[0] + 0, idx[1] + 1]).as_(),
                 ];
                 out_v[more as usize] = lerp(weights[0] / (weights[0] + weights[1]), out_v[0], out_v[1]);
                 bounds_v[more as usize] = bounds_mid;

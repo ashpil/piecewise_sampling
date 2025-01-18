@@ -28,7 +28,7 @@ fn main() {
         let height = resolution.height();
         Data2D::new_same(width, height, 0.0)
     }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
-        buffer[pos.y()][pos.x()] = luminance([r, g, b]);
+        buffer[[pos.x(), pos.y()]] = luminance([r, g, b]);
     }).unwrap().layer_data.channel_data.pixels;
 
     fn sample_perf<D: Discrete2D<f32, Weight=f32>>(name: &str, weights: &Data2D<f32>) {

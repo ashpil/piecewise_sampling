@@ -22,7 +22,7 @@ fn main() {
         let height = resolution.height();
         Data2D::new_same(width, height, 0.0)
     }, |buffer, pos, (r, g, b, _): (f32, f32, f32, f32)| {
-        buffer[pos.y()][pos.x()] = luminance([r, g, b]);
+        buffer[[pos.x(), pos.y()]] = luminance([r, g, b]);
     }).unwrap().layer_data.channel_data.pixels;
 
 
@@ -30,7 +30,7 @@ fn main() {
         let sampler = D::build(weights);
         let warping = discrete_sampling::distribution::visualize_warping(&sampler, 16);
         write_rgb_file(out_name, warping.width(), warping.height(), |x, y| {
-            let p = warping[y][x];
+            let p = warping[[x, y]];
             (p[0], p[1], p[2])
         }).unwrap();
         println!("Wrote {}", out_name);
