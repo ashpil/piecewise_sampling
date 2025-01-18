@@ -61,8 +61,12 @@ impl<T> Data2D<T> {
         self.buffer.len() / self.width
     }
 
-    pub fn iter(&self) -> core::slice::Chunks<T> {
-        self.buffer.chunks(self.width)
+    pub fn iter(&self) -> core::slice::ChunksExact<T> {
+        self.buffer.chunks_exact(self.width)
+    }
+
+    pub fn iter_mut(&mut self) -> core::slice::ChunksExactMut<T> {
+        self.buffer.chunks_exact_mut(self.width)
     }
 
     pub fn get(&self, idx: usize) -> Option<&[T]> {

@@ -140,6 +140,36 @@ pub fn chisq_distribution_1d<D: Discrete1D<f64>>(expected: &[D::Weight], sample_
 }
 
 #[cfg(test)]
+pub fn chisq_distribution_2d<D: Discrete2D<f64>>(expected: &Data2D<D::Weight>, sample_count: usize)
+    where D::Weight: std::fmt::Display + AsPrimitive<f64>,
+        f64: AsPrimitive<D::Weight>,
+{
+    let dist = D::build(expected);
+    let mut observed = Data2D::new_same(expected.width(), expected.height(), 0.0f64);
+    let mut hist = Data2D::new_same(expected.width(), expected.height(), 0usize);
+    let mut rng = StdRng::seed_from_u64(0);
+
+    for _ in 0..sample_count {
+        let idx = dist.sample([rng.r#gen::<f64>(), rng.r#gen::<f64>()]);
+        hist[idx[1]][idx[0]] += 1;
+    }
+
+    for (weight, obs) in hist.iter().flatten().zip(observed.iter_mut().flatten()) {
+        *obs = ((*weight as f64) / (sample_count as f64)) * dist.integral().as_();
+    }
+
+    let mut chsq = 0.0;
+    let dof = expected.width() * expected.height() - 1;
+    for (obs, exp) in observed.iter().flatten().zip(expected.iter().flatten()) {
+        let diff = obs - exp.as_();
+        chsq += diff * diff / exp.as_();
+    }
+
+    let pval = 1.0 - ChiSquared::new(dof as f64).unwrap().cdf(chsq as f64);
+    assert!(pval >= 0.99, "failed chi-squared statistical test, p = {}", pval);
+}
+
+#[cfg(test)]
 pub fn test_inv_1d<R: Real + 'static, D: Continuous1D<R>>(weights: &[D::Weight], sample_count: usize)
     where R: std::fmt::Display,
           usize: AsPrimitive<R>,
@@ -200,6 +230,48 @@ macro_rules! distribution_1d_tests {
 }
 #[cfg(test)]
 pub(crate) use distribution_1d_tests;
+
+#[cfg(test)]
+macro_rules! distribution_2d_tests {
+    ($impl:path) => {
+        mod distribution_2d {
+            use crate::distribution::chisq_distribution_2d;
+            use $impl as Dist;
+
+            #[test]
+            fn basic() {
+                let width = 2;
+                let height = 2;
+                let mut distr = crate::data2d::Data2D::new_same(width, height, 0);
+                distr[0][0] = 1;
+                distr[0][1] = 1;
+                distr[1][0] = 2;
+                distr[1][1] = 4;
+                chisq_distribution_2d::<Dist<usize>>(&distr, 10_000);
+            }
+
+            #[test]
+            fn uniform() {
+                chisq_distribution_2d::<Dist<f32>>(&crate::data2d::Data2D::new_same(100, 100, 1.0), 1_000_000);
+            }
+
+            #[test]
+            fn increasing() {
+                let width = 17;
+                let height = 16;
+                let mut distr = crate::data2d::Data2D::new_same(width, height, 0);
+                for j in 0..height {
+                    for i in 0..width {
+                        distr[j][i] = height * width;
+                    }
+                }
+                chisq_distribution_2d::<Dist<usize>>(&distr, 100_000);
+            }
+        }
+    }
+}
+#[cfg(test)]
+pub(crate) use distribution_2d_tests;
 
 #[cfg(test)]
 macro_rules! continuous_distribution_1d_tests {

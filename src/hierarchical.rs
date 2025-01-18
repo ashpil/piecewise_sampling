@@ -320,22 +320,11 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
 mod tests {
     use crate::distribution::distribution_1d_tests;
     use crate::distribution::continuous_distribution_1d_tests;
+    use crate::distribution::distribution_2d_tests;
 
     distribution_1d_tests!(crate::hierarchical::Hierarchical1D);
     continuous_distribution_1d_tests!(crate::hierarchical::Hierarchical1D);
 
-    #[test]
-    fn build_2d() {
-        use crate::distribution::Discrete2D;
-        let width = 17;
-        let height = 16;
-        let mut dist = crate::data2d::Data2D::new_same(width, height, 0.0);
-        for j in 0..height {
-            for i in 0..width {
-                dist[j][i] = 2.0;
-            }
-        }
-        <crate::hierarchical::Hierarchical2D<f64> as Discrete2D<f64>>::build(&dist);
-    }
+    distribution_2d_tests!(crate::hierarchical::Hierarchical2D);
 }
 

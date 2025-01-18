@@ -94,3 +94,12 @@ impl<D: Continuous1D<R>, R: Real + AsPrimitive<usize> + 'static> Continuous2D<R>
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::distribution::distribution_2d_tests;
+
+    pub type Inversion2D<R> = crate::Adapter2D<crate::Inversion1D<R>>;
+
+    distribution_2d_tests!(crate::adapter2d::tests::Inversion2D);
+}
+
