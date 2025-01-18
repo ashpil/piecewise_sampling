@@ -25,7 +25,7 @@ use alloc::{
 
 // returns pdf, selected idx
 // remaps u to [0-1) range
-fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights: [N; 2], rand: &mut R) -> u8 {
+fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights: [N; 2], rand: &mut R) -> bool {
     let weight_sum = weights[0] + weights[1];
     let weight_1_r = weights[0].as_();
     let weight_2_r = weights[1].as_();
@@ -33,10 +33,10 @@ fn select_remap<N: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static>(weights
     let new_rand: R = *rand * weight_sum_r;
     if new_rand < weight_1_r {
         *rand = new_rand / weight_1_r;
-        0
+        false
     } else {
         *rand = (new_rand - weight_1_r) / weight_2_r;
-        1
+        true
     }
 }
 
@@ -86,11 +86,11 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete1D<R> for 
 
         for level in self.levels.iter() {
             idx *= 2;
-            let probs = [
+            let weights = [
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            idx = idx + select_remap(probs, &mut u) as usize;
+            idx = idx + select_remap(weights, &mut u) as usize;
         }
         idx
     }
@@ -118,11 +118,11 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> fo
 
         for level in self.levels.iter() {
             idx *= 2;
-            let probs = [
+            let weights = [
                 get_or_zero(level, idx + 0),
                 get_or_zero(level, idx + 1),
             ];
-            idx = idx + select_remap(probs, &mut u) as usize;
+            idx = idx + select_remap(weights, &mut u) as usize;
         }
         (idx.as_() + u) / self.size().as_()
     }
@@ -141,8 +141,8 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous1D<R> fo
             let bounds_mid = (bounds[0] + bounds[1]) / 2.as_();
 
             let more = u < bounds_mid;
-            let probs = [get_or_zero(level, idx + 0).as_(), get_or_zero(level, idx + 1).as_()];
-            out[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out[0], out[1]);
+            let weights = [get_or_zero(level, idx + 0).as_(), get_or_zero(level, idx + 1).as_()];
+            out[more as usize] = lerp(weights[0] / (weights[0] + weights[1]), out[0], out[1]);
             bounds[more as usize] = bounds_mid;
             idx += (!more) as usize;
         }
@@ -177,7 +177,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             let mut level = Data2D::new_same(nx, ny, W::zero());
             for y in 0..ny {
                 for x in 0..nx {
-                    level[y][x] = 
+                    level[y][x] =
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 0) +
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 0) +
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 1) +
@@ -199,17 +199,17 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
-            let probs_x = [
+            let weights_x = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            idx[0] = idx[0] + select_remap(probs_x, &mut u) as usize;
+            idx[0] = idx[0] + select_remap(weights_x, &mut u) as usize;
 
-            let probs_y = [
+            let weights_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            idx[1] = idx[1] + select_remap(probs_y, &mut v) as usize;
+            idx[1] = idx[1] + select_remap(weights_y, &mut v) as usize;
         }
         idx
     }
@@ -247,17 +247,17 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
             if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
-            let probs_x = [
+            let weights_x = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
                 get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
             ];
-            idx[0] = idx[0] + select_remap(probs_x, &mut u) as usize;
+            idx[0] = idx[0] + select_remap(weights_x, &mut u) as usize;
 
-            let probs_y = [
+            let weights_y = [
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
                 get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
             ];
-            idx[1] = idx[1] + select_remap(probs_y, &mut v) as usize;
+            idx[1] = idx[1] + select_remap(weights_y, &mut v) as usize;
         }
         let idx_normalized = [
             (idx[0].as_() + u) / self.width().as_(),
@@ -286,12 +286,12 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
             if level.width() > 1 {
                 let bounds_mid = (bounds_u[0] + bounds_u[1]) / 2.as_();
 
-                let probs = [
+                let weights = [
                     (get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)).as_(),
                     (get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)).as_(),
                 ];
                 let more = u < bounds_mid;
-                out_u[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_u[0], out_u[1]);
+                out_u[more as usize] = lerp(weights[0] / (weights[0] + weights[1]), out_u[0], out_u[1]);
                 bounds_u[more as usize] = bounds_mid;
                 idx[0] += (!more) as usize;
             }
@@ -300,11 +300,11 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
                 let bounds_mid = (bounds_v[0] + bounds_v[1]) / 2.as_();
 
                 let more = v < bounds_mid;
-                let probs = [
+                let weights = [
                     get_or_zero_2d(level, idx[0] + 0, idx[1] + 0).as_(),
                     get_or_zero_2d(level, idx[0] + 0, idx[1] + 1).as_(),
                 ];
-                out_v[more as usize] = lerp(probs[0] / (probs[0] + probs[1]), out_v[0], out_v[1]);
+                out_v[more as usize] = lerp(weights[0] / (weights[0] + weights[1]), out_v[0], out_v[1]);
                 bounds_v[more as usize] = bounds_mid;
                 idx[1] += (!more) as usize;
             }
