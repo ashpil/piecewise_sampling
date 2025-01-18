@@ -177,7 +177,7 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             let mut level = Data2D::new_same(nx, ny, W::zero());
             for y in 0..ny {
                 for x in 0..nx {
-                    level[y][x] =
+                    level[y][x] = 
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 0) +
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 1, 2 * y + 0) +
                         get_or_zero_2d(&levels[prev_level_idx], 2 * x + 0, 2 * y + 1) +
@@ -199,17 +199,19 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Discrete2D<R> for 
             if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
-            let weights_x = [
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-                get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
+            let weights = [
+                [get_or_zero_2d(level, idx[0] + 0, idx[1] + 0), get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)],
+                [get_or_zero_2d(level, idx[0] + 1, idx[1] + 0), get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)],
             ];
-            idx[0] = idx[0] + select_remap(weights_x, &mut u) as usize;
 
-            let weights_y = [
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-            ];
-            idx[1] = idx[1] + select_remap(weights_y, &mut v) as usize;
+            let weights_x = [weights[0][0] + weights[0][1], weights[1][0] + weights[1][1]];
+            let selected_x = select_remap(weights_x, &mut u) as usize;
+
+            let weights_y = [weights[selected_x][0], weights[selected_x][1]];
+            let selected_y = select_remap(weights_y, &mut v) as usize;
+
+            idx[0] += selected_x;
+            idx[1] += selected_y;
         }
         idx
     }
@@ -247,17 +249,19 @@ impl<W: Num + PartialOrd + AsPrimitive<R>, R: Real + 'static> Continuous2D<R> fo
             if i > 0 && self.levels[i].width() > self.levels[i - 1].width() { idx[0] *= 2 }
             if i > 0 && self.levels[i].height() > self.levels[i - 1].height() { idx[1] *= 2 }
 
-            let weights_x = [
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-                get_or_zero_2d(level, idx[0] + 1, idx[1] + 0) + get_or_zero_2d(level, idx[0] + 1, idx[1] + 1),
+            let weights = [
+                [get_or_zero_2d(level, idx[0] + 0, idx[1] + 0), get_or_zero_2d(level, idx[0] + 0, idx[1] + 1)],
+                [get_or_zero_2d(level, idx[0] + 1, idx[1] + 0), get_or_zero_2d(level, idx[0] + 1, idx[1] + 1)],
             ];
-            idx[0] = idx[0] + select_remap(weights_x, &mut u) as usize;
 
-            let weights_y = [
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 0),
-                get_or_zero_2d(level, idx[0] + 0, idx[1] + 1),
-            ];
-            idx[1] = idx[1] + select_remap(weights_y, &mut v) as usize;
+            let weights_x = [weights[0][0] + weights[0][1], weights[1][0] + weights[1][1]];
+            let selected_x = select_remap(weights_x, &mut u) as usize;
+
+            let weights_y = [weights[selected_x][0], weights[selected_x][1]];
+            let selected_y = select_remap(weights_y, &mut v) as usize;
+
+            idx[0] += selected_x;
+            idx[1] += selected_y;
         }
         let idx_normalized = [
             (idx[0].as_() + u) / self.width().as_(),
