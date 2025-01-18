@@ -1,12 +1,13 @@
 #[cfg(not(feature = "std"))]
 use alloc::{
+    boxed::Box,
     vec::Vec,
     vec,
 };
 
 #[derive(Clone)]
 pub struct Data2D<T> {
-    buffer: Vec<T>,
+    buffer: Box<[T]>,
     width: usize,
 }
 
@@ -19,7 +20,7 @@ impl<T: core::fmt::Debug> core::fmt::Debug for Data2D<T> {
 impl<T> Default for Data2D<T> {
     fn default() -> Self {
         Self {
-            buffer: Vec::new(),
+            buffer: Vec::new().into_boxed_slice(),
             width: 0,
         }
     }
@@ -28,7 +29,7 @@ impl<T> Default for Data2D<T> {
 impl<T: Clone> Data2D<T> {
     pub fn new_same(width: usize, height: usize, same: T) -> Self {
         Self {
-            buffer: vec![same; width * height],
+            buffer: vec![same; width * height].into_boxed_slice(),
             width,
         }
     }
